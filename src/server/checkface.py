@@ -120,13 +120,16 @@ def home():
 def image_generation(hash):
     os.makedirs("outputImages", exist_ok=True)
     seed = int(hashlib.sha256(hashSeed.encode('utf-8')).hexdigest(), 16) % 10**8
-    
-    latents = [fromSeed(seed)]
-    images = toImages(latents, image_dim)
+    name = f"outputImages/s{seed}.jpg"
+    if not os.path.isfile(name):
+        latents = [fromSeed(seed)]
+        images = toImages(latents, image_dim)
+        images[0].save(name, 'JPEG')
+        print("Saved images")
+    else:
+        print("Image file already exists")
 
-    name = f"s{seed}.jpg"
-    images[0].save(os.path.join("outputImages", name), 'JPEG')
-    print("Saved images")
+    #TODO: return image file
 
 app.run(host="0.0.0.0", port="80")
     
