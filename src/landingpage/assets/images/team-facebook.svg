@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="7px" height="14px" viewBox="0 0 7 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 42 (36781) - http://www.bohemiancoding.com/sketch -->
+    <title>team-facebook</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Theme-Copy" transform="translate(-369.000000, -2511.000000)" fill-rule="nonzero" fill="#464646">
+            <g id="Group-3" transform="translate(344.000000, 2511.000000)">
+                <g id="team-facebook" transform="translate(25.000000, 0.000000)">
+                    <g id="Artboard-1">
+                        <g id="line-icons">
+                            <g id="row-4-line-icons">
+                                <path d="M4.53270588,0.354941176 C4.10035294,0.354941176 3.68529412,0.406823529 3.20105882,0.597058824 C2.21529412,0.994823529 1.71376471,1.92870588 1.71376471,3.38141176 L1.71376471,4.79952941 L0.330235294,4.79952941 L0.330235294,7.16882353 L1.71376471,7.16882353 L1.71376471,14 L4.53270588,14 L4.53270588,7.16882353 L6.45235294,7.16882353 L6.71176471,4.79952941 L4.53270588,4.79952941 L4.53270588,3.72729412 C4.53270588,3.39870588 4.56729412,3.15658824 4.65376471,3.01823529 C4.77482353,2.81070588 5.01694118,2.70694118 5.39741176,2.70694118 L6.67717647,2.70694118 L6.67717647,0.354941176 L4.53270588,0.354941176 Z" id="facebook_L"></path>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
