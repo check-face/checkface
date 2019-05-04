@@ -7,7 +7,8 @@
       "matches": [
         "<all_urls>"
       ],
-      "js": ["static/js/jquery-2.2.4.js", "content.js"]
+      "css":["static/css/bootstrap.min.css"],
+      "js": ["static/js/jquery-2.2.4.js","static/js/bootstrap.min.js", "content.js"]
     }
   ],
   "browser_action": {
@@ -19,7 +20,7 @@
   "permissions": [
          "contextMenus"
        ],
-       "icons": {
+      "icons": {
          "16": "static/images/checkface-icon.png"
        }
 }
