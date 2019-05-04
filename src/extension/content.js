@@ -20,6 +20,9 @@ function showPopup(hashMessage) {
     document.body.appendChild(div);
     div.onclick = removeFunc;
     div.querySelector("#checkfaceimg").src = "https://checkface.ml/api/" + hashMessage + "?dim=300";
+    if(hashMessage.length > 103) {
+      hashMessage = hashMessage.substring(0, 100) + "...";
+    }
     div.querySelector("#checkfacehash").innerHTML = hashMessage;
 
   }
