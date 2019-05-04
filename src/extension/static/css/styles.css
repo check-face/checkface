@@ -9,15 +9,16 @@
   place-items: center;
 }
 
-#FaceCheck .cfcontainer {
+.cfcontainer {
   --text-color-normal: #333333;
   --text-color-highlight: #D65A31;
   --text-color-subtle: #999999;
   --bg-color-main: #ECECEC;
   --bg-color-alt: #CCCCCC;
+  text-align: center;
 }
 
-#FaceCheck.cfdark-theme {
+.cfdark-theme {
   --text-color-normal: #C4C6C3;
   --text-color-highlight: #D65A31;
   --text-color-subtle: #4B5365;
@@ -25,8 +26,8 @@
   --bg-color-alt: #21242B;
 }
 
-#FaceCheck @media (prefers-color-scheme: dark) {
-  .container {
+@media (prefers-color-scheme: dark) {
+  .cfcontainer {
   --text-color-normal: #C4C6C3;
   --text-color-highlight: #D65A31;
   --text-color-subtle: #4B5365;
@@ -35,9 +36,32 @@
   }
 }
 
-#FaceCheck .checkface {
+.checkface {
   background-color: var(--bg-color-main);
   color: var(--text-color-normal);
   padding: 10px;
   border: 2px solid var(--text-color-subtle);
+}
+
+#cfToolTip {
+  position: absolute;
+  display: none;
+  width: 0;
+  height: 0;
+  z-index: 9999999999999;
+}
+
+#cfToolTip > div {
+  position: absolute;
+  right: 0;
+  top: 2em;
+}
+
+#cfToolTip > div > div {
+  position: relative;
+  left: 50%;
+}
+
+a:hover > #cfToolTip {
+  display: block;
 }
