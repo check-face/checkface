@@ -21,12 +21,16 @@ $(document).ready(function () {
         myVideo.width = 420;
     }
 
-    function myFunction(event) {
-      event.preventDefault();
-      alert('this');
+    function myFunction() {
+       
+        var myImage = new Image();
+        myImage.src = 'http://checkface.ml/api/' + $('#object').value + "?dim=500";
 
-      return true;
+
+        document.getElementById("imagecontainer").appendChild(myImage);
+        return false;
     }
+    window.myFunction = myFunction;
 
 
     //Mouse click scroll
@@ -49,7 +53,7 @@ $(document).ready(function () {
     });
 
     //Subscribe to newsletter
-    $('#object').on('submit', function (event) {
+    /*$('#object').on('submit', function (event) {
       alert("wdldf");
       event.preventDefault();
         const form = event.target;
@@ -62,7 +66,7 @@ $(document).ready(function () {
         document.getElementById("imagecontainer").appendChild(myImage);
 
         return true;
-        });
+        });*/
 
 
 //smooth scrolling

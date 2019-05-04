@@ -127,7 +127,7 @@ body {
   border: 1px solid #0ABCEB;
   width: 210px;
   height: 51px;
-  color: white;
+  color: black;
   margin: 30px auto;
 
 }
@@ -135,7 +135,7 @@ body {
 .submit-btn:hover{
 
   background-color: #6affb4;
-  color: white;
+  color: black;
   border-radius: 20px;
   -webkit-box-shadow: -1px 9px 46px -17px rgba(43, 43, 43, 1);
   -moz-box-shadow: -1px 9px 46px -17px rgba(43, 43, 43, 1);
