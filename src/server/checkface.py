@@ -2,6 +2,7 @@
 
 from encoder.perceptual_model import PerceptualModel
 from encoder.generator_model import Generator
+import threading
 import subprocess
 import shutil
 import base64
@@ -17,6 +18,7 @@ import sys
 import re
 import pickle
 import numpy as np
+import Queue
 np.set_printoptions(threshold=np.inf)
 
 import flask
@@ -115,6 +117,8 @@ app.config["DEBUG"] = True
 def home():
     return 'It works'
 
+q = Queue.Queue()
+doneJobSeeds = {}
 
 @app.route('/api/<path:hash>', methods=['GET'])
 def image_generation(hash):
@@ -122,14 +126,29 @@ def image_generation(hash):
     seed = int(hashlib.sha256(hashSeed.encode('utf-8')).hexdigest(), 16) % 10**8
     name = f"outputImages/s{seed}.jpg"
     if not os.path.isfile(name):
-        latents = [fromSeed(seed)]
-        images = toImages(latents, image_dim)
-        images[0].save(name, 'JPEG')
-        print("Saved images")
+        q.put(seed)
+        while not (seed in doneJobSeeds):
+            print(f"Waiting for job {seed}")
     else:
-        print("Image file already exists")
+        print(f"Image file {name} already exists")
 
     #TODO: return image file
+
+def worker():
+    while True:
+        while q.empty():
+            print(f"Waiting for job")
+        else:
+            seed = q.get()
+            print(f"Running job {seed}")
+            latents = [fromSeed(seed)]
+            images = toImages(latents, image_dim)
+            images[0].save(name, 'JPEG')
+            print(f"Finished job {seed}")
+            doneJobSeeds.add(jobseed)
+
+t1 = threading.Thread(target=worker, args=[])
+t1.start()
 
 app.run(host="0.0.0.0", port="80")
     
