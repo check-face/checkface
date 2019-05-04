@@ -8,6 +8,7 @@ COPY ./dnnlib /app/dnnlib
 COPY ./fetchModel.py /app/fetchModel.py
 WORKDIR /app
 RUN python fetchModel.py
-
+RUN pip install flask
 COPY . /app
+
 CMD ["python", "checkface.py"]

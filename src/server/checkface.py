@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from encoder.perceptual_model import PerceptualModel
 from encoder.generator_model import Generator
 import subprocess
@@ -17,6 +19,7 @@ import pickle
 import numpy as np
 np.set_printoptions(threshold=np.inf)
 
+import flask
 
 sys.path.append('/app/dnnlib')
 dnnlib.tflib.init_tf()
@@ -51,7 +54,6 @@ def truncTrick(dlatents, psi=0.7, cutoff=8):
     coefs = np.where(layer_idx < cutoff, psi * ones, ones)
     dlatents = (dlatents - dlatent_avg) * coefs + dlatent_avg
     return dlatents
-
 
 def toDLat(lat, useTruncTrick=True):
     lat = np.array(lat)
@@ -106,11 +108,26 @@ def toImages(latents, image_size):
 
 image_dim = 1024
 
-os.makedirs("outputImages", exist_ok=True)
-seed = 4
-latents = [fromSeed(seed)]
-images = toImages(latents, image_dim)
+app = flask.Flask(__name__)
+app.config["DEBUG"] = True
 
-name = f"s{seed}.jpg"
-images[0].save(os.path.join("outputImages", name), 'JPEG')
-print("Saved images")
+@app.route('/', methods=['GET'])
+def home():
+    return 'It works'
+
+
+@app.route('/api/<path:hash>', methods=['GET'])
+def image_generation(hash):
+    os.makedirs("outputImages", exist_ok=True)
+    seed = hash
+
+    #TODO change seed to a hashed hash for the correct length of seed for the latents?
+    latents = [fromSeed(seed)]
+    images = toImages(latents, image_dim)
+
+    name = f"s{seed}.jpg"
+    images[0].save(os.path.join("outputImages", name), 'JPEG')
+    print("Saved images")
+
+app.run(host="0.0.0.0", port="80")
+    
