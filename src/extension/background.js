@@ -18,9 +18,12 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
   // Send a message to the active tab
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     var activeTab = tabs[0];
-    chrome.tabs.sendMessage(activeTab.id, {"message": info.selectedText});
+    chrome.tabs.sendMessage(activeTab.id, {"message": info.selectionText });
   });
 });
+
+chrome.tabs.sendMessage(0, {"message": "asdfggh" });
+
 
 String.prototype.hashCode = function() {
 var hash = 0, i, chr;
