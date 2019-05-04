@@ -13,3 +13,6 @@ The notebook is accessible here: [https://checkfaceinstance.notebook.us-east-1.s
 
 We will try use the most of sagemaker we can, and usuing this toolchain might be good and easy to port the existing StyleGAN Code:
 https://sagemaker.readthedocs.io/en/stable/using_tf.html
+
+Python Code for wrapping tensorflow custom code so it can be run
+https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_python.rst
