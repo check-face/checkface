@@ -11,9 +11,6 @@
       "js": ["static/js/jquery-2.2.4.js","static/js/bootstrap.min.js", "content.js"]
     }
   ],
-  "browser_action": {
-  "default_icon": "static/images/checkface-icon.png"
-  },
   "background": {
   "scripts": ["background.js"]
   },
