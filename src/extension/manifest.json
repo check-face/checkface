@@ -15,7 +15,8 @@
   "scripts": ["background.js"]
   },
   "permissions": [
-         "contextMenus"
+         "contextMenus",
+         "downloads"
        ],
       "icons": {
          "16": "static/images/checkface-icon.png"
