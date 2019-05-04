@@ -150,7 +150,9 @@ def worker():
             name = f"outputImages/s{seed}.jpg"
             print(f"Running job {seed}")
             latents = [fromSeed(Gs, seed)]
-            requested_image = request.args.get('dim')  # if key doesn't exist, returns None
+            requested_image = request.args.get('dim') # if key doesn't exist, returns None
+            if requested_image is None:
+                requested_image = image_dim
             images = toImages(Gs, latents, requested_image)
             images[0].save(name, 'JPEG')
             print(f"Finished job {seed}")
