@@ -20,6 +20,7 @@ import pickle
 import numpy as np
 import queue
 import hashlib
+from flask import send_file
 np.set_printoptions(threshold=np.inf)
 
 import flask
@@ -108,7 +109,7 @@ def toImages(Gs, latents, image_size):
     return pilImages
 
 
-image_dim = 1024
+image_dim = 300
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -128,13 +129,11 @@ def image_generation(hash):
     name = f"outputImages/s{seed}.jpg"
     if not os.path.isfile(name):
         q.put(seed)
-        # while not (seed in doneJobSeeds):
-        #     print(f"Waiting for job {seed}")
+        while not (seed in doneJobSeeds):
+            time.sleep(0.05)
     else:
         print(f"Image file {name} already exists")
-
-    #TODO: return image file
-    return "Stuff"
+    return send_file(name, mimetype='image/jpg')
 
 def worker():
     dnnlib.tflib.init_tf()
@@ -142,8 +141,8 @@ def worker():
     dlatent_avg = Gs.get_var('dlatent_avg')
     while True:
         while q.empty():
-            time.sleep(0.5)
-            print('waiting for job')
+            time.sleep(0.05)
+            #print('waiting for job')
         else:
             seed = q.get()
             name = f"outputImages/s{seed}.jpg"
