@@ -1,7 +1,7 @@
 // background.js
 var contextMenuItem={
   "id": "checkFace",
-  "title": "Check Face",
+  "title": "Check Face \“%s\”",
   "contexts": ["selection"]
 };
 
