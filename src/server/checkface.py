@@ -20,7 +20,7 @@ import pickle
 import numpy as np
 import queue
 import hashlib
-from flask import send_file
+from flask import send_file, request
 np.set_printoptions(threshold=np.inf)
 
 import flask
@@ -111,6 +111,8 @@ def toImages(Gs, latents, image_size):
 
 image_dim = 300
 
+
+
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
@@ -148,7 +150,8 @@ def worker():
             name = f"outputImages/s{seed}.jpg"
             print(f"Running job {seed}")
             latents = [fromSeed(Gs, seed)]
-            images = toImages(Gs, latents, image_dim)
+            requested_image = request.args.get('dim')  # if key doesn't exist, returns None
+            images = toImages(Gs, latents, requested_image)
             images[0].save(name, 'JPEG')
             print(f"Finished job {seed}")
             doneJobSeeds.add(seed)
@@ -157,4 +160,3 @@ t1 = threading.Thread(target=worker, args=[])
 t1.start()
 
 app.run(host="0.0.0.0", port="80")
-    
