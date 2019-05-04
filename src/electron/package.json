@@ -1,0 +1,24 @@
+{
+  "name": "checkface-desktop",
+  "version": "1.0.0",
+  "description": "Checkface Desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": "https://github.com/electron/electron-quick-start",
+  "keywords": [
+    "CheckFace",
+    "StyleGAN",
+    "checksum",
+    "sha-265"
+  ],
+  "author": "Oliver Coad",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "electron": "^5.0.0"
+  },
+  "dependencies": {
+    "electron-reload": "^1.4.0"
+  }
+}
