@@ -4,7 +4,10 @@
 const electron = require('electron');
 
 const mainGlobal = electron.remote.getGlobal('global');
-console.log(mainGlobal.hashdata);
+console.log("Hashdata:", mainGlobal.hashdata);
 let hashMessage = mainGlobal.hashdata;
-document.querySelector("#checkfaceimg").src = "https://checkface.ml/api/" + hashMessage + "?dim=300";
+document.querySelector("#checkfaceimg").src = "https://checkface.ml/api/" + hashMessage + "?dim=400";
+if(hashMessage.length > 103) {
+    hashMessage = hashMessage.substring(0, 100) + "...";
+}
 document.querySelector("#checkfacehash").innerHTML = hashMessage;

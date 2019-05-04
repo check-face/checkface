@@ -32,4 +32,11 @@
   background-color: var(--bg-color-main);
   color: var(--text-color-normal);
   padding: 10px;
+  width: 500px;
+}
+
+.checkface p.subtle {
+  margin: 0;
+  margin-bottom: -10px;
+  color: var(--text-color-subtle)
 }

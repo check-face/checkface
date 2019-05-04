@@ -1,6 +1,7 @@
 // Modules to control application life and create native browser window
 const {app, BrowserWindow} = require('electron')
 const path = require('path')
+const sha256File = require('sha256-file');
 
 // Enable live reload for Electron too
 require('electron-reload')(path.join(__dirname, '../'), {
@@ -16,21 +17,31 @@ function createWindow () {
   mainWindow = new BrowserWindow({
     backgroundColor: '#ECECEC',
     useContentSize: true,
-    width: 380,
-    height: 400,
+    width: 565,
+    height: 480,
     webPreferences: {
       nodeIntegration: true
     }
   })
 
   mainWindow.setMenu(null);
-  if(process.argv.length == 3) {
-    console.log("Hash to show:", process.argv[2]);
-    global.hashdata= process.argv[2];
+  if(process.argv.length >= 3) {
+    global.filename= process.argv[process.argv.length - 1];
+    sha256File(global.filename, function (error, sum) {
+      if (error) return console.log(error);
+      global.hashdata = sum;
+      console.log("SHA256:", sum);
+      mainWindow.loadFile('index.html')
+    })
+    console.log("Filename:", global.filename);
   }
-
+  else {
+    console.log("Args", process.argv);
+    global.hashdata = "Please select a file to hash";
+    mainWindow.loadFile('index.html')
+  }
+  
   // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
 
 
 
