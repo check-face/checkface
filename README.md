@@ -16,3 +16,13 @@ https://sagemaker.readthedocs.io/en/stable/using_tf.html
 
 Python Code for wrapping tensorflow custom code so it can be run
 https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_python.rst
+
+
+## Electron
+
+Development:
+
+```
+npm install
+npm start
+```
