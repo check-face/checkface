@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener(
         document.body.appendChild( div );
         div.appendChild( div_below );
         div.onclick = removeFunc;
-        div.style.position = 'absolute';
+        div.style.position = 'sticky';
         div.style.left = '0';
         div.style.top = '0';
         div.style.bottom = '0';
