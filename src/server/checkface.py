@@ -128,10 +128,17 @@ doneJobSeeds = { "apple", "banana", "orange" }
 def image_generation(hash):
     os.makedirs("outputImages", exist_ok=True)
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
-    name = f"outputImages/s{seed}.jpg"
+    requested_image = image_dim
+    try:
+        requested_image = int(request.args.get('dim')) # if key doesn't exist, returns None
+        if requested_image is None or requested_image < 10 or requested_image > 1024:
+            requested_image = image_dim
+    except:
+        requested_image = image_dim
+    name = f"outputImages/s{seed}_{requested_image}.jpg"
     if not os.path.isfile(name):
-        q.put(seed)
-        while not (seed in doneJobSeeds):
+        q.put((seed, requested_image))
+        while not ((seed, requested_image) in doneJobSeeds):
             time.sleep(0.05)
     else:
         print(f"Image file {name} already exists")
@@ -146,17 +153,15 @@ def worker():
             time.sleep(0.05)
             #print('waiting for job')
         else:
-            seed = q.get()
-            name = f"outputImages/s{seed}.jpg"
-            print(f"Running job {seed}")
+            seed, requested_image = q.get()
+            name = f"outputImages/s{seed}_{requested_image}.jpg"
+            print(f"Running job {seed}_{requested_image}")
             latents = [fromSeed(Gs, seed)]
-            requested_image = request.args.get('dim') # if key doesn't exist, returns None
-            if requested_image is None:
-                requested_image = image_dim
+            
             images = toImages(Gs, latents, requested_image)
             images[0].save(name, 'JPEG')
             print(f"Finished job {seed}")
-            doneJobSeeds.add(seed)
+            doneJobSeeds.add((seed, requested_image))
 
 t1 = threading.Thread(target=worker, args=[])
 t1.start()
