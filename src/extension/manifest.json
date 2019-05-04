@@ -7,8 +7,8 @@
       "matches": [
         "<all_urls>"
       ],
-      "css":["static/css/bootstrap.min.css"],
-      "js": ["static/js/jquery-2.2.4.js","static/js/bootstrap.min.js", "content.js"]
+      "css":["static/css/styles.css"],
+      "js": ["static/js/jquery-2.2.4.js", "content.js"]
     }
   ],
   "background": {
