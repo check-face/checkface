@@ -1,5 +1,5 @@
 // background.js
-var contextMenuItem={
+var contextMenuItem= {
   "id": "checkFace",
   "title": "Check Face \“%s\”",
   "contexts": ["selection"]
@@ -7,11 +7,11 @@ var contextMenuItem={
 
 chrome.contextMenus.create(contextMenuItem);
 // Called when the user clicks on the browser action.
-chrome.contextMenus.onClicked.addListener(function(tab) {
+chrome.contextMenus.onClicked.addListener(function(info, tab) {
   // Send a message to the active tab
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     var activeTab = tabs[0];
-    chrome.tabs.sendMessage(activeTab.id, {"message": "clicked_browser_action"});
+    chrome.tabs.sendMessage(activeTab.id, {"message": info.selectionText});
   });
 });
 

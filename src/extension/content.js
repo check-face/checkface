@@ -1,7 +1,7 @@
 // content.js
 chrome.runtime.onMessage.addListener(
+
   function(request, sender, sendResponse) {
-    if( request.message === "clicked_browser_action" ) {
       function myfunc(){
         document.documentElement.style.height = '100%';
         document.body.style.height = '100%';
@@ -14,6 +14,7 @@ chrome.runtime.onMessage.addListener(
         var div_below = document.createElement( 'div' );
         var p = document.createElement('p');
         var img = document.createElement('img');
+        var img_cross = document.createElement('img');
         // var cssId = 'myCss';  // you could encode the css path itself to generate id..
         // if (!document.getElementById(cssId))
         // {
@@ -31,22 +32,25 @@ chrome.runtime.onMessage.addListener(
 
         div.class = 'container dark-theme';
         div.style.position = 'absolute';
-        div.style.display = 'block';
+        div.style.left = '0';
+        div.style.top = '0';
         div.style.zIndex = '1000';
         div.style.width = '50%';
         div.style.border = '5px solid red';
         div.style.backgroundColor = 'white';
+        // div.appendChild(img_cross).src = 'static/images/close-button.png';
+        div.appendChild(img_cross).style.top = '0';
+        div.appendChild(img_cross).style.right = '0';
         div.appendChild( div_below ).class = 'checkface';
         div_below.style.zIndex = '1000';
-        div_below.appendChild(p).innerHTML = 'sasfdfshdllfdaflafdsja';
+        div_below.appendChild(p).innerHTML = request.message;
         div_below.appendChild( img ).src = 'https://picsum.photos/300/300';
+}
 
-  }
-
-  $(document).ready(myfunc);
+      $(document).ready(myfunc);
 
       // This line is new!
       // chrome.runtime.sendMessage({"message": "open_popup", "url": myfunc});
-    }
+
   }
 );
