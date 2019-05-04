@@ -35,14 +35,15 @@ function showPopup(hashMessage) {
 }
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => showPopup(request.message));
 
-let commitSHA_Regex = /commit\/([a-zA-Z0-9]{40,40})($|\?|#)/;
+let commitSHA_Regex = /(^| |\/|=)([a-zA-Z0-9]{40,40})($|\?|#|&|\/| )/;
+
 function addHoverFaceCheck(node) {
   if(node.querySelector("#cfToolTip")) {
     return;
   }
   let res = commitSHA_Regex.exec(node.href)
   if(res) {
-    hashMessage = res[1]
+    hashMessage = res[2]
     // node.style.color = 'yellow';
     var div = document.createElement('div');
     div.id = "cfToolTip";
