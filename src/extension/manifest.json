@@ -8,7 +8,7 @@
         "<all_urls>"
       ],
       "css":["static/css/bootstrap.min.css"],
-      "js": ["static/js/jquery-2.2.4.js","static/js/bootstrap.min.js", "content.js", "static/js/tags.js"]
+      "js": ["static/js/jquery-2.2.4.js","static/js/bootstrap.min.js", "content.js"]
     }
   ],
   "background": {
@@ -16,8 +16,7 @@
   },
   "permissions": [
          "contextMenus",
-         "downloads",
-         "file://*"
+         "downloads"
        ],
       "icons": {
          "16": "static/images/checkface-icon.png"
