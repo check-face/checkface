@@ -1,0 +1,91 @@
+/* Small Devices, Tablets */
+
+@media only screen and (min-width: 768px) {
+
+    .header-right {
+        display: block;
+        float: right;
+        padding: 6px 20px;
+    }
+
+    .header-headline {
+        text-align: left;
+        max-width: 380px;
+        padding-top: 75px;
+    }
+
+    .header-running-text {
+        line-height: 30px;
+        margin: 0;
+        text-align: left;
+    }
+
+    .hero {
+        padding-bottom: 230px;
+    }
+
+    .hero-button {
+        margin-top: 30px;
+        margin-bottom: 30px;
+    }
+
+    .hero-right {
+        text-align: left;
+    }
+
+
+    .feature-section {
+        padding-top: 60px;
+    }
+
+    .features-headline {
+        color: white;
+        padding-bottom: 70px;
+    }
+
+    .logos {
+        padding: 30px;
+        max-width: 100%;
+    }
+
+    .white-section-text {
+        text-align: justify;
+        padding-top: 80px;
+        padding-left: 100px;
+    }
+
+
+
+}
+
+.team {
+    padding-bottom: 130px;
+
+}
+
+.team-member {
+    text-align: center;
+}
+
+.email-form-div {
+    max-width: inherit;
+    margin: auto;
+}
+
+.webscope {
+    margin-top: 0;
+}
+
+.social-links {
+    float: right;
+}
+
+/* Medium Devices, Desktops */
+
+@media only screen and (min-width: 992px) {
+}
+
+/* Large Devices, Wide Screens */
+
+@media only screen and (min-width: 1200px) {
+}
