@@ -119,9 +119,8 @@ def home():
 @app.route('/api/<path:hash>', methods=['GET'])
 def image_generation(hash):
     os.makedirs("outputImages", exist_ok=True)
-    seed = hash
-
-    #TODO change seed to a hashed hash for the correct length of seed for the latents?
+    seed = int(hashlib.sha256(hashSeed.encode('utf-8')).hexdigest(), 16) % 10**8
+    
     latents = [fromSeed(seed)]
     images = toImages(latents, image_dim)
 
