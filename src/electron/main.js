@@ -23,10 +23,16 @@ function createWindow () {
     }
   })
 
-  mainWindow.setMenu(null)
+  mainWindow.setMenu(null);
+  if(process.argv.length == 3) {
+    console.log("Hash to show:", process.argv[2]);
+    global.hashdata= process.argv[2];
+  }
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html')
+
+
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
