@@ -23,11 +23,11 @@ $(document).ready(function () {
 
     function myFunction() {
        
-        var myImage = new Image();
-        myImage.src = 'http://checkface.ml/api/' + $('#object').value + "?dim=500";
+        var myImage = document.getElementById("my-image");
+        myImage.src = 'https://checkface.ml/api/' + document.getElementById('object').value + "?dim=500";
 
 
-        document.getElementById("imagecontainer").appendChild(myImage);
+        // document.getElementById("imagecontainer").appendChild(myImage);
         return false;
     }
     window.myFunction = myFunction;
