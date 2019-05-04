@@ -1,4 +1,7 @@
 // background.js
+
+
+
 var contextMenuItem={
   "id": "checkFace",
   "title": "Check Face \“%s\”",
@@ -8,14 +11,14 @@ var contextMenuItem={
 var fileIdHash = "";
 
 chrome.downloads.onCreated.addListener(function(downloadItem){
-var fileIdHash = new String(downloadItem.id).hashCode();
+
 //chrome.downloads.search(downloadItem.id, function()) - use if searching for a specific file that has already been downloaded is required
 });
 
 chrome.contextMenus.create(contextMenuItem);
 // Called when the user clicks on the browser action.
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
-  // Send a message to the active tab
+  // Send a message to the active tag
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     var activeTab = tabs[0];
     chrome.tabs.sendMessage(activeTab.id, {"message": info.selectedText});
