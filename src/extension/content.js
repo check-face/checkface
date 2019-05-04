@@ -2,55 +2,42 @@
 chrome.runtime.onMessage.addListener(
 
   function(request, sender, sendResponse) {
+      let div;
+      let hashMessage = request.message;
       function myfunc(){
-        document.documentElement.style.height = '100%';
-        document.body.style.height = '100%';
-        document.documentElement.style.width = '100%';
-        document.body.style.width = '100%';
 
-        var div = document.createElement( 'div' );
-        var head = document.createElement( 'head');
-        var link = document.createElement('link');
-        var div_below = document.createElement( 'div' );
-        var p = document.createElement('p');
+        div = document.createElement( 'div' );
+        div_below = document.createElement('div');
         var img = document.createElement('img');
-        var img_cross = document.createElement('img');
-        // var cssId = 'myCss';  // you could encode the css path itself to generate id..
-        // if (!document.getElementById(cssId))
-        // {
-        //     var head  = document.getElementsByTagName('head')[0];
-        //     var link  = document.createElement('link');
-        //     link.id   = cssId;
-        //     link.rel  = 'stylesheet';
-        //     link.type = 'text/css';
-        //     link.href = '../shared/styles.css';
-        //     link.media = 'all';
-        //     head.appendChild(link);
-        // }
 
         document.body.appendChild( div );
-
-        div.class = 'container dark-theme';
+        div.appendChild( div_below );
+        div.onclick = removeFunc;
         div.style.position = 'absolute';
         div.style.left = '0';
         div.style.top = '0';
-        div.style.zIndex = '1000';
-        div.style.width = '50%';
-        div.style.border = '5px solid red';
-        div.style.backgroundColor = 'white';
-        // div.appendChild(img_cross).src = 'static/images/close-button.png';
-        div.appendChild(img_cross).style.top = '0';
-        div.appendChild(img_cross).style.right = '0';
-        div.appendChild( div_below ).class = 'checkface';
-        div_below.style.zIndex = '1000';
-        div_below.appendChild(p).innerHTML = request.message;
+        div.style.bottom = '0';
+        div.style.right = '0';
+        div_below.style.margin = "auto";
+        div.style.zIndex = '99999999999';
+        div_below.style.width = '500px';
+        div_below.style.height = '500px';
+        div_below.style.border = '2px solid black';
+        div_below.style.backgroundColor = 'white';
         div_below.appendChild( img ).src = 'https://picsum.photos/300/300';
-}
+        img.style.position = 'absolute';
+        img.style.left = '0';
+        img.style.top = '0';
+        img.style.bottom = '0';
+        img.style.right = '0';
+        img.style.margin = "auto";
+      }
 
+      function removeFunc(){
+        div.remove();
+        return true;
+      }
       $(document).ready(myfunc);
 
-      // This line is new!
-      // chrome.runtime.sendMessage({"message": "open_popup", "url": myfunc});
-
-  }
+    }
 );
