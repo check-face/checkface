@@ -18,13 +18,14 @@ import sys
 import re
 import pickle
 import numpy as np
-import Queue
+import queue
+import hashlib
 np.set_printoptions(threshold=np.inf)
 
 import flask
 
 sys.path.append('/app/dnnlib')
-dnnlib.tflib.init_tf()
+# dnnlib.tflib.init_tf()
 
 def fetch_model():
     url = 'https://drive.google.com/uc?id=1-O8VHNOpBNHnQyn0yz_pK3PHoc3CboC3'
@@ -36,17 +37,16 @@ def fetch_model():
 synthesis_kwargs = dict(output_transform=dict(
     func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=20)
 
-Gs = fetch_model()
+# Gs = fetch_model()
 
-
-def fromSeed(seed, dim=0, dimOffset=0):
+def fromSeed(Gs, seed, dim=0, dimOffset=0):
     qlat = np.random.RandomState(seed).randn(1, Gs.input_shape[1])[0]
     if dimOffset != 0:
         qlat[dim] += dimOffset
     return qlat
 
 
-dlatent_avg = Gs.get_var('dlatent_avg')
+dlatent_avg = ""
 
 
 def truncTrick(dlatents, psi=0.7, cutoff=8):
@@ -57,7 +57,7 @@ def truncTrick(dlatents, psi=0.7, cutoff=8):
     dlatents = (dlatents - dlatent_avg) * coefs + dlatent_avg
     return dlatents
 
-def toDLat(lat, useTruncTrick=True):
+def toDLat(Gs, lat, useTruncTrick=True):
     lat = np.array(lat)
     if lat.shape[0] == 512:
         lats = Gs.components.mapping.run(np.array([lat]), None)
@@ -80,7 +80,7 @@ def chooseQorDLat(latent1, latent2):
     return latent1, latent2
 
 
-def toImages(latents, image_size):
+def toImages(Gs, latents, image_size):
     start = time.time()
     if(isinstance(latents, list)):
         isDlat = False
@@ -117,35 +117,42 @@ app.config["DEBUG"] = True
 def home():
     return 'It works'
 
-q = Queue.Queue()
-doneJobSeeds = {}
+# such a queue
+q = queue.Queue()
+doneJobSeeds = { "apple", "banana", "orange" }
 
 @app.route('/api/<path:hash>', methods=['GET'])
 def image_generation(hash):
     os.makedirs("outputImages", exist_ok=True)
-    seed = int(hashlib.sha256(hashSeed.encode('utf-8')).hexdigest(), 16) % 10**8
+    seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
     name = f"outputImages/s{seed}.jpg"
     if not os.path.isfile(name):
         q.put(seed)
-        while not (seed in doneJobSeeds):
-            print(f"Waiting for job {seed}")
+        # while not (seed in doneJobSeeds):
+        #     print(f"Waiting for job {seed}")
     else:
         print(f"Image file {name} already exists")
 
     #TODO: return image file
+    return "Stuff"
 
 def worker():
+    dnnlib.tflib.init_tf()
+    Gs = fetch_model()
+    dlatent_avg = Gs.get_var('dlatent_avg')
     while True:
         while q.empty():
-            print(f"Waiting for job")
+            time.sleep(0.5)
+            print('waiting for job')
         else:
             seed = q.get()
+            name = f"outputImages/s{seed}.jpg"
             print(f"Running job {seed}")
-            latents = [fromSeed(seed)]
-            images = toImages(latents, image_dim)
+            latents = [fromSeed(Gs, seed)]
+            images = toImages(Gs, latents, image_dim)
             images[0].save(name, 'JPEG')
             print(f"Finished job {seed}")
-            doneJobSeeds.add(jobseed)
+            doneJobSeeds.add(seed)
 
 t1 = threading.Thread(target=worker, args=[])
 t1.start()
