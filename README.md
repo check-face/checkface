@@ -1,5 +1,7 @@
 # CheckFace
 
+![CheckFace Face](/docs/assets/images/face.jpg)
+
  > Putting a face to a hash
 
 `Winner of Facebook Hack Melbourne 2019`
