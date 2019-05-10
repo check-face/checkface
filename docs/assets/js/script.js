@@ -24,7 +24,7 @@ $(document).ready(function () {
     function myFunction() {
        
         var myImage = document.getElementById("my-image");
-        myImage.src = 'https://checkface.ml/api/' + document.getElementById('object').value + "?dim=500";
+        myImage.src = 'https://api.checkface.ml/api/' + document.getElementById('object').value + "?dim=500";
 
 
         // document.getElementById("imagecontainer").appendChild(myImage);
