@@ -2,6 +2,10 @@
 
 Putting a face to a name
 
+```
+Winner of Facebook Hack Melbourne 2019!
+
+```
 
 ## Sagemaker and API endpoints
 For sagemaker login use [https://cdilga.signin.aws.amazon.com/console](https://cdilga.signin.aws.amazon.com/console)
