@@ -24,7 +24,7 @@ $(document).ready(function () {
     function myFunction() {
        
         var myImage = document.getElementById("my-image");
-        myImage.src = 'http://api.checkface.ml:15400/api/' + document.getElementById('object').value + "?dim=500";
+        myImage.src = 'https://70726cc9.au.ngrok.io/api/' + document.getElementById('object').value + "?dim=500";
 
 
         // document.getElementById("imagecontainer").appendChild(myImage);
