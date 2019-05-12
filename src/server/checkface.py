@@ -114,7 +114,11 @@ image_dim = 300
 
 
 app = flask.Flask(__name__)
-app.config["DEBUG"] = True
+app.config["DEBUG"] = False
+
+@app.route('/status', methods=['GET'])
+def status():
+    return ''
 
 @app.route('/', methods=['GET'])
 def home():
@@ -135,7 +139,7 @@ def image_generation(hash):
             requested_image = image_dim
     except:
         requested_image = image_dim
-    name = f"outputImages/s{seed}_{requested_image}.jpg"
+    name = os.path.join(os.getcwd(), "outputImages", f"s{seed}_{requested_image}.jpg")
     if not os.path.isfile(name):
         q.put((seed, requested_image))
         while not ((seed, requested_image) in doneJobSeeds):
@@ -154,16 +158,18 @@ def worker():
             #print('waiting for job')
         else:
             seed, requested_image = q.get()
-            name = f"outputImages/s{seed}_{requested_image}.jpg"
+            name = os.path.join(os.getcwd(), "outputImages", f"s{seed}_{requested_image}.jpg")
             print(f"Running job {seed}_{requested_image}")
             latents = [fromSeed(Gs, seed)]
             
             images = toImages(Gs, latents, requested_image)
             images[0].save(name, 'JPEG')
+            
             print(f"Finished job {seed}")
             doneJobSeeds.add((seed, requested_image))
 
 t1 = threading.Thread(target=worker, args=[])
 t1.start()
 
-app.run(host="0.0.0.0", port="80")
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port="80")
