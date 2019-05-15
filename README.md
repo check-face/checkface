@@ -12,7 +12,7 @@ Facebook's [Hackathon](https://www.facebook.com/hackathon/) at [Facebook Hack Me
 Who uses checksums? We all know we should.
 
 A range of unused tools exist for verifying file integrity that suffer from poor adoption, are difficult to use and aren't human-friendly.
-Humans are inherently good at remembering interesting information, be it stories, people and generally benefit from context. Humans also have the ability to remember faces extremely well, with many of us experiencing false-positives or pareidolia - seeing faces as a part of inanimate objects.
+Humans are inherently good at remembering interesting information, be it stories, people and generally benefit from context. Most humans also have the ability to remember faces extremely well, with many of us experiencing false-positives or pareidolia - seeing faces as a part of inanimate objects.
 
 With the advent of hyper-realistic Style transfer GAN's like Nvidia's StyleGAN, we can generate something that our brains believe is a real person, and make use of that human-hardware accelerated memorisation and let people compare between hashes they've seen even weeks apart with only a few quick glances.
 
