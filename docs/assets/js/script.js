@@ -1,37 +1,20 @@
 $(document).ready(function () {
 
-    var myVideo = document.getElementById("video1");
-
-    function playPause() {
-        if (myVideo.paused)
-            myVideo.play();
-        else
-            myVideo.pause();
-    }
-
-    function makeBig() {
-        myVideo.width = 560;
-    }
-
-    function makeSmall() {
-        myVideo.width = 320;
-    }
-
-    function makeNormal() {
-        myVideo.width = 420;
-    }
-
     function myFunction() {
        
         var myImage = document.getElementById("my-image");
-        myImage.src = 'https://api.checkface.ml/api/' + document.getElementById('object').value + "?dim=500";
-
-
-        // document.getElementById("imagecontainer").appendChild(myImage);
+        var value = document.getElementById('object').value;
+        myImage.src = 'https://api.checkface.ml/api/' + value + "?dim=500";
+        window.history.replaceState({ value: value }, 'Check Face - ' + value, '?value=' + value);
         return false;
     }
     window.myFunction = myFunction;
-
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentVal = urlParams.get('value');
+    if(currentVal) {
+        document.getElementById('object').value = currentVal;
+        document.getElementById("my-image").src = 'https://api.checkface.ml/api/' + currentVal + "?dim=500";
+    }
 
     //Mouse click scroll
     $(document).ready(function () {
