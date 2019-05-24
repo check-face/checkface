@@ -7,11 +7,6 @@ var contextMenuItem={
 
 var fileIdHash = "";
 
-chrome.downloads.onCreated.addListener(function(downloadItem){
-var fileIdHash = new String(downloadItem.id).hashCode();
-//chrome.downloads.search(downloadItem.id, function()) - use if searching for a specific file that has already been downloaded is required
-});
-
 chrome.contextMenus.create(contextMenuItem);
 // Called when the user clicks on the browser action.
 chrome.contextMenus.onClicked.addListener(function(info, tab) {

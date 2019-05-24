@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "CheckFace",
-  "version": "1.0",
+  "name": "Check Face",
+  "version": "1.1",
   "content_scripts": [
     {
       "matches": [
@@ -15,10 +15,12 @@
   "scripts": ["background.js", "hot-reload.js"]
   },
   "permissions": [
-         "contextMenus",
-         "downloads"
+         "activeTab",
+         "contextMenus"
        ],
       "icons": {
-         "16": "static/images/checkface-icon.png"
+         "128": "static/images/checkface-icon.png",
+         "16": "static/images/checkface-icon16.png",
+         "48": "static/images/checkface-icon48.png"
        }
 }
