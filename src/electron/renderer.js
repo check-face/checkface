@@ -4,9 +4,20 @@
 const electron = require('electron');
 
 const mainGlobal = electron.remote.getGlobal('global');
-console.log("Hashdata:", mainGlobal.hashdata);
-let hashMessage = mainGlobal.hashdata;
-document.querySelector("#checkfaceimg").src = "https://checkface.ml/api/" + hashMessage + "?dim=400";
+let hashdata = mainGlobal.hashdata;
+console.log("Hashdata:", hashdata);
+
+let img = document.querySelector("#checkfaceimg");
+let siteurl = `https://checkface.ml/`;
+if(hashdata.sum) {
+    img.src = `https://api.checkface.ml/api/${hashdata.sum}?dim=400`;
+    siteurl += `?value=${hashdata.sum}`
+}
+else {
+    img.classList.add("dummyimg");
+}
+img.addEventListener('click', () => electron.shell.openExternal(siteurl));
+let hashMessage = hashdata.message;
 if(hashMessage.length > 103) {
     hashMessage = hashMessage.substring(0, 100) + "...";
 }

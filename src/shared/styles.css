@@ -40,3 +40,8 @@
   margin-bottom: -10px;
   color: var(--text-color-subtle)
 }
+
+.dummyimg {
+  opacity: 0.6;
+  filter: blur(4px);
+}

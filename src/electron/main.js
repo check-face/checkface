@@ -26,14 +26,21 @@ function createWindow () {
 
   mainWindow.setMenu(null);
   if(process.argv.length >= 3) {
-    global.filename= process.argv[process.argv.length - 1];
-    sha256File(global.filename, function (error, sum) {
-      if (error) return console.log(error);
-      global.hashdata = sum;
+    global.hashdata = { filename: process.argv[process.argv.length - 1] };
+    sha256File(global.hashdata.filename, function (error, sum) {
+      if (error) {
+        console.log("Error getting sum: ", error);
+        global.hashdata.message = "Error calculating sha256 for file.";
+      }
+      else {
+        global.hashdata.message = 
+        sum;
+        global.hashdata.sum = sum;
+      }
       console.log("SHA256:", sum);
       mainWindow.loadFile('index.html')
     })
-    console.log("Filename:", global.filename);
+    console.log("Filename:", global.hashdata.filename);
   }
   else {
     console.log("Args", process.argv);
