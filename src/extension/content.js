@@ -19,7 +19,7 @@ function showPopup(hashMessage) {
 
     document.body.appendChild(div);
     div.onclick = removeFunc;
-    div.querySelector("#checkfaceimg").src = "https://checkface.ml/api/" + hashMessage + "?dim=300";
+    div.querySelector("#checkfaceimg").src = "https://api.checkface.ml/api/" + hashMessage + "?dim=300";
     if(hashMessage.length > 103) {
       hashMessage = hashMessage.substring(0, 100) + "...";
     }
@@ -55,7 +55,7 @@ function addHoverFaceCheck(node) {
       </div>
     </div>
     `
-    div.querySelector("#checkfaceimg").src = "https://checkface.ml/api/" + hashMessage + "?dim=200";
+    div.querySelector("#checkfaceimg").src = "https://api.checkface.ml/api/" + hashMessage + "?dim=200";
     div.querySelector("#checkfacehash").innerHTML = hashMessage.substring(0, 7);
     node.appendChild(div);
   }

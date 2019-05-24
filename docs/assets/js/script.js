@@ -35,22 +35,6 @@ $(document).ready(function () {
         }
     });
 
-    //Subscribe to newsletter
-    /*$('#object').on('submit', function (event) {
-      alert("wdldf");
-      event.preventDefault();
-        const form = event.target;
-        const data = new FormData(form);
-
-        var myImage = new Image();
-        myImage.src = 'checkface.ml/api/'+data.object.value;
-
-
-        document.getElementById("imagecontainer").appendChild(myImage);
-
-        return true;
-        });*/
-
 
 //smooth scrolling
 
