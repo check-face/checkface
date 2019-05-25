@@ -56,6 +56,16 @@ Click the LOAD UNPACKED button and select the extension directory.
 Ta-da! The extension has been successfully installed. Because no icons were included in the manifest, a generic toolbar icon will be created for the extension.
 
 (Sourced: [Chrome Developer](https://developer.chrome.com/extensions/getstarted))
+
+### Windows Explorer File Context Menu
+
+Download and install the latest release.
+Right click any file and choose from a number of hash algorithms to see its checkface.
+We recommend using SHA256.
+
+![using explorer file context menu](/docs/assets/images/screenshots/explorer-context-menu.jpg)
+![windows desktop app](/docs/assets/images/screenshots/checkface-dotnet-example.jpg)
+
 ### Electron App
 
 Build and run from source only at the moment.
@@ -78,6 +88,14 @@ Simple pure Javascript based bootstrap webpage. Upload to anything that serves s
 ### Chrome Extension
 
 TODO
+
+### Windows Desktop Application
+
+Open `src/dotnet-windows/checkface-dotnet.sln` in Visual Studio.
+
+To use as explorer shell extension, you will need to [sign the assembly](https://docs.microsoft.com/en-us/visualstudio/ide/managing-assembly-and-manifest-signing?view=vs-2019#how-to-sign-an-assembly-in-visual-studio).
+
+Use [SharpShell ServerManager](https://github.com/dwmkerr/sharpshell/releases) to load the project output `checkface-dotnet.dll` in a test shell.
 
 ### Electron App
 
