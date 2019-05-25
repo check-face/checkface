@@ -1,13 +1,14 @@
 // Modules to control application life and create native browser window
 const {app, BrowserWindow} = require('electron')
+const electron = require('electron')
 const path = require('path')
 const sha256File = require('sha256-file');
 
-// Enable live reload for Electron too
-require('electron-reload')(path.join(__dirname, '../'), {
-  // Note that the path to electron may vary according to the main file
-  electron: require(`${__dirname}/node_modules/electron`)
-});
+if (process.env.NODE_ENV === 'development') {
+  require('electron-reload')(__dirname, {
+    electron: require(`${__dirname}/node_modules/electron`)
+  });
+}
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
@@ -18,14 +19,19 @@ function createWindow () {
     backgroundColor: '#ECECEC',
     useContentSize: true,
     width: 565,
-    height: 480,
+    height: 500,
     webPreferences: {
       nodeIntegration: true
     }
   })
-
-  mainWindow.setMenu(null);
-  if(process.argv.length >= 3) {
+  let args = process.argv;
+  if (process.env.NODE_ENV === 'development') {
+    args = args.slice(1);
+  }
+  else {
+    mainWindow.setMenu(null);
+  }
+  if(process.argv.length >= 2) {
     global.hashdata = { filename: process.argv[process.argv.length - 1] };
     sha256File(global.hashdata.filename, function (error, sum) {
       if (error) {
@@ -43,7 +49,7 @@ function createWindow () {
   }
   else {
     console.log("Args", process.argv);
-    global.hashdata = { message: "Please select a file to hash" };
+    global.hashdata = { message: "Please select a file to hash as a command line argument." };
     mainWindow.loadFile('index.html')
   }
   
