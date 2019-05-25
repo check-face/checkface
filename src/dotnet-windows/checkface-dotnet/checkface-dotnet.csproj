@@ -109,19 +109,16 @@
     <None Include="Resources\face-transparent.jpg" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\glow.gif" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\loader.gif" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\faceico.bmp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\faceico32.ico" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\faceico16.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\faceico48.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
