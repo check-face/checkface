@@ -4,8 +4,11 @@
   "description": "Checkface Desktop",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "dev": "cross-env NODE_ENV=development electron .",
+    "pack": "electron-builder --dir",
+    "build": "electron-builder"
   },
+  "postinstall": "electron-builder install-app-deps",
   "repository": "https://github.com/electron/electron-quick-start",
   "keywords": [
     "CheckFace",
@@ -16,10 +19,19 @@
   "author": "Oliver Coad",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "^5.0.0"
+    "cross-env": "^5.2.0",
+    "electron": "^5.0.0",
+    "electron-builder": "^20.42.0"
   },
   "dependencies": {
     "electron-reload": "^1.4.0",
     "sha256-file": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.check-face.checkface",
+    "productName": "CheckFace",
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    }
   }
 }
