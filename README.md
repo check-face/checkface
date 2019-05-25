@@ -58,6 +58,8 @@ Ta-da! The extension has been successfully installed. Because no icons were incl
 (Sourced: [Chrome Developer](https://developer.chrome.com/extensions/getstarted))
 ### Electron App
 
+Build and run from source only at the moment.
+
 ### Backend API
 
 Prerequisites
@@ -79,8 +81,22 @@ TODO
 
 ### Electron App
 
-TODO
+```console
+cd ./src/electron
+yarn install
+yarn run dev ./README.md
+```
+
+Build installer using
+
+```console
+yarn run build
+```
+
+Help needed to set up auto updating and registering in file context menu.
 
 ### Backend API
 
 TODO
+
+## 
