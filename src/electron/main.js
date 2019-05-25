@@ -33,8 +33,7 @@ function createWindow () {
         global.hashdata.message = "Error calculating sha256 for file.";
       }
       else {
-        global.hashdata.message = 
-        sum;
+        global.hashdata.message = sum;
         global.hashdata.sum = sum;
       }
       console.log("SHA256:", sum);
@@ -44,7 +43,7 @@ function createWindow () {
   }
   else {
     console.log("Args", process.argv);
-    global.hashdata = "Please select a file to hash";
+    global.hashdata = { message: "Please select a file to hash" };
     mainWindow.loadFile('index.html')
   }
   
