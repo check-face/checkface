@@ -1,4 +1,4 @@
-# CheckFace
+# Check Face
 
  > Putting a face to a hash
 
@@ -24,11 +24,9 @@ With the advent of hyper-realistic Style transfer GAN's like [Nvidia's StyleGAN]
    - Docker
      - Nvidia Docker runtime
    - Flask
-   - Amazon AWS
-     - ECR
-     - S3 Hosted Site [Checkface](http://checkface.ml)
-   - Chrome Web Application
-   - Electron Application
+   - GitHub Pages
+   - Chrome Web Extension
+   - Winforms Application
    - CloudFlare
 
 
