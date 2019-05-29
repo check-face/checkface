@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.352
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "checkface-dotnet", "checkface-dotnet\checkface-dotnet.csproj", "{8273D588-1F5E-4D9F-9CD6-6B6FD7881DD4}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "checkface-dotnet-installer", "checkface-dotnet-installer\checkface-dotnet-installer.vdproj", "{21F8FD32-7F3D-48F1-B295-545C58C0EB58}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8273D588-1F5E-4D9F-9CD6-6B6FD7881DD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8273D588-1F5E-4D9F-9CD6-6B6FD7881DD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8273D588-1F5E-4D9F-9CD6-6B6FD7881DD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8273D588-1F5E-4D9F-9CD6-6B6FD7881DD4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21F8FD32-7F3D-48F1-B295-545C58C0EB58}.Debug|Any CPU.ActiveCfg = Debug
+		{21F8FD32-7F3D-48F1-B295-545C58C0EB58}.Release|Any CPU.ActiveCfg = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {118DF1B6-7A05-4321-88FB-C25CE7C35820}
+	EndGlobalSection
+EndGlobal
