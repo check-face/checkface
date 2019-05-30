@@ -115,4 +115,6 @@ Help needed to set up auto updating and registering in file context menu.
 
 TODO
 
-## 
+## License
+
+Our work is based on a combination of original content and work adapted from [Nvidia Labs StyleGAN](https://stylegan.xyz/code) under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/)
