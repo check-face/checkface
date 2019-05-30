@@ -113,8 +113,27 @@ Help needed to set up auto updating and registering in file context menu.
 
 ### Backend API
 
-TODO
+We rely on Nvlabs StyleGAN to run our inference, using the default model. First ensure you have 
+
+  - [cuDNN](https://developer.nvidia.com/cudnn) 7.3.1
+  - [CUDA toolkit 9.0](https://developer.nvidia.com/cuda-90-download-archive)
+  - NVIDIA driver 391.35
+
+Instructions for installing the 
+
+Best practice is to first create a virtualenv, followed by installing the requirements
+
+  1. Run `virtualenv venv` in the project directory
+  2. Activate the venv `./venv/Scripts/activate.bat`
+  3. Install the requirements `pip install -r requirements.txt`
+  4. Run the backend with `python src/server/checkface.py`
+
+#### System requirements
+
+All you really need is a CUDA GPU with enough VRAM to load the inference model, which has been tested to work on a GTX 1080 with 8GB of VRAM, with NVIDIA driver 391.35.
 
 ## License
 
-Our work is based on a combination of original content and work adapted from [Nvidia Labs StyleGAN](https://stylegan.xyz/code) under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/)
+Our work is based on a combination of original content and work adapted from [Nvidia Labs StyleGAN](https://stylegan.xyz/code) under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/). Anything outside of the `src/server` dir is original work, and a diff can be used to show the use of the dnnlib and StyleGAN model inside of this directory.
+
+The inference model was trained by Nvidia Labs on the FFHQ dataset, please refer to the [Flickr-Faces-HQ repository](http://stylegan.xyz/ffhq).
