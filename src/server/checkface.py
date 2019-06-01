@@ -160,7 +160,7 @@ def worker():
             seed, requested_image = q.get()
             name = os.path.join(os.getcwd(), "outputImages", f"s{seed}_{requested_image}.jpg")
             print(f"Running job {seed}_{requested_image}")
-            latents = [fromSeed(Gs, seed)]
+            latents = [toDLat(Gs, fromSeed(Gs, seed))]
             
             images = toImages(Gs, latents, requested_image)
             images[0].save(name, 'JPEG')
