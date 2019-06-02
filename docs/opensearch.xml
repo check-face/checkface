@@ -1,0 +1,9 @@
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/" xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+<ShortName>CheckFace</ShortName>
+<Description>
+Putting a face to a name
+</Description>
+<InputEncoding>UTF-8</InputEncoding>
+<Image width="16" height="16" type="image/x-icon">https://checkface.ml/assets/image/face.jpg</Image>
+<Url type="text/html" method="get" template="https://checkface.ml/?value={searchTerms}"/>
+</OpenSearchDescription>
