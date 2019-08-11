@@ -10,7 +10,7 @@ $(document).ready(function () {
     }
     window.myFunction = myFunction;
     const urlParams = new URLSearchParams(window.location.search);
-    const currentVal = decodeURIComponent(urlParams.get('value') || "");
+    const currentVal = (urlParams.get('value') || "");
     if(currentVal) {
         document.getElementById('object').value = currentVal;
         document.getElementById("my-image").src = 'https://api.checkface.ml/api/' + encodeURIComponent(currentVal) + "?dim=500";
