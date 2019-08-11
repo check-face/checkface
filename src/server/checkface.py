@@ -152,8 +152,9 @@ def image_generation(hash):
 def hashlatentdata(hash):
     os.makedirs("outputImages", exist_ok=True)
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
-    latent = fromSeed(Gs, seed)
-    return jsonify({ "seed": seed, "qlatent": latent})
+    qlatent = fromSeed(Gs, seed)
+    dlatent = toDLat(Gs, qlatent)
+    return jsonify({ "seed": seed, "qlatent": qlatent, "dlatent": dlatent })
 
 def worker():
     dnnlib.tflib.init_tf()
