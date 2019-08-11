@@ -55,10 +55,11 @@
 
           <h4 class="header-running-text light">Putting a face to a name.</h4>
 
-          <form target="_blank" onsubmit="return window.myFunction()">
+          <form id="searchform" action="/index.html" >
             <h4>Try this:</h4>
             <br />
-            <input id="object" type="text" name="object" style="color:black;" />
+            <input id="object" type="text" name="value" style="color:black;" />
+            <input type="hidden" name="searchrequest" value="get">
             <br />
             <button class="submit-btn" input id="submit-btn" type="submit" value="Submit">
               Submit

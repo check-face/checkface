@@ -5,7 +5,7 @@ $(document).ready(function () {
         var myImage = document.getElementById("my-image");
         var value = document.getElementById('object').value;
         myImage.src = 'https://api.checkface.ml/api/' + value + "?dim=500";
-        window.history.replaceState({ value: value }, 'Check Face - ' + value, '?value=' + value);
+        window.history.pushState({ value: value }, 'Check Face - ' + value, '?value=' + value);
         return false;
     }
     window.myFunction = myFunction;
@@ -14,6 +14,17 @@ $(document).ready(function () {
     if(currentVal) {
         document.getElementById('object').value = currentVal;
         document.getElementById("my-image").src = 'https://api.checkface.ml/api/' + currentVal + "?dim=500";
+    }
+
+    //Can't get chrome to automatically add search engine using osdd, so get it to do a full
+    //form submission that counts as "doing a search" the first time in order to get it to register.
+    //but for subsequent searches it is better to not do a full page reload
+    const didRegisterSearch = urlParams.get('searchrequest') == 'get';
+    if(didRegisterSearch) {
+        window.history.replaceState({ value: currentVal }, 'Check Face - ' + currentVal, '/?value=' + currentVal);
+        let form = document.getElementById('searchform');
+        form.setAttribute("target", "_blank");
+        form.setAttribute("onsubmit", "return window.myFunction()");
     }
 
     //Mouse click scroll
