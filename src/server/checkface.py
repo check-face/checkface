@@ -38,14 +38,15 @@ def fetch_model():
 synthesis_kwargs = dict(output_transform=dict(
     func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=20)
 
-# Gs = fetch_model()
+#We need to have access to this dimension to generate qlatents and we don't want to have to access
+#the massive Gs object outside of the worker thread, thus we update here when we can.
+GsInputDim = 512
 
-def fromSeed(Gs, seed, dim=0, dimOffset=0):
-    qlat = np.random.RandomState(seed).randn(1, Gs.input_shape[1])[0]
+def fromSeed(seed, dim=0, dimOffset=0):
+    qlat = np.random.RandomState(seed).randn(1, GsInputDim)[0]
     if dimOffset != 0:
         qlat[dim] += dimOffset
     return qlat
-
 
 dlatent_avg = ""
 
@@ -148,17 +149,20 @@ def image_generation(hash):
         print(f"Image file {name} already exists")
     return send_file(name, mimetype='image/jpg')
 
-@app.route('/api/hashdata/<path:hash>', methods=['GET'])
+@app.route('/hashdata/<path:hash>', methods=['GET'])
 def hashlatentdata(hash):
-    os.makedirs("outputImages", exist_ok=True)
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
-    latent = fromSeed(Gs, seed)
-    return jsonify({ "seed": seed, "qlatent": latent})
+    latent = fromSeed(seed)
+    return jsonify({ "seed": seed, "qlatent": latent.tolist()})
 
 def worker():
     dnnlib.tflib.init_tf()
     Gs = fetch_model()
     dlatent_avg = Gs.get_var('dlatent_avg')
+
+    #Setup for the other bits of the program, hacky and vulnerable to race conditions and might have old data
+    GsInputDim = Gs.input_shape[1]
+
     while True:
         while q.empty():
             time.sleep(0.05)
@@ -167,7 +171,7 @@ def worker():
             seed, requested_image = q.get()
             name = os.path.join(os.getcwd(), "outputImages", f"s{seed}_{requested_image}.jpg")
             print(f"Running job {seed}_{requested_image}")
-            latents = [fromSeed(Gs, seed)]
+            latents = [fromSeed(seed)]
             
             images = toImages(Gs, latents, requested_image)
             images[0].save(name, 'JPEG')
