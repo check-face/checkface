@@ -155,6 +155,11 @@ def hashlatentdata(hash):
     latent = fromSeed(seed)
     return jsonify({ "seed": seed, "qlatent": latent.tolist()})
 
+@app.route('/queue/', methods=['GET'])
+def healthcheck():
+    return jsonify({"queue": q.qsize()})
+
+
 def worker():
     dnnlib.tflib.init_tf()
     Gs = fetch_model()
