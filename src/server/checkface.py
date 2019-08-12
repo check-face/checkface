@@ -172,4 +172,4 @@ t1 = threading.Thread(target=worker, args=[])
 t1.start()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port="80")
+    app.run(host="0.0.0.0", port="443", ssl_context='adhoc')
