@@ -20,7 +20,7 @@ import pickle
 import numpy as np
 import queue
 import hashlib
-from flask import send_file, request
+from flask import send_file, request, jsonify
 np.set_printoptions(threshold=np.inf)
 
 import flask
@@ -147,6 +147,14 @@ def image_generation(hash):
     else:
         print(f"Image file {name} already exists")
     return send_file(name, mimetype='image/jpg')
+
+@app.route('/api/hashdata/<path:hash>', methods=['GET'])
+def hashlatentdata(hash):
+    os.makedirs("outputImages", exist_ok=True)
+    seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
+    qlatent = fromSeed(Gs, seed)
+    dlatent = toDLat(Gs, qlatent)
+    return jsonify({ "seed": seed, "qlatent": qlatent, "dlatent": dlatent })
 
 def worker():
     dnnlib.tflib.init_tf()
