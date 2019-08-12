@@ -155,7 +155,7 @@ def hashlatentdata(hash):
     latent = fromSeed(seed)
     return jsonify({ "seed": seed, "qlatent": latent.tolist()})
 
-@app.route('/queue/', methods=['GET'])
+@app.route('/queue', methods=['GET'])
 def healthcheck():
     return jsonify({"queue": q.qsize()})
 
