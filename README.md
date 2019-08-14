@@ -18,6 +18,16 @@ With the advent of hyper-realistic Style transfer GAN's like [Nvidia's StyleGAN]
 ![CheckFace Face](/docs/assets/images/face.jpg)  
 *This generated face is an example of what you could expect to see next to your file's checksum or your git commit sha.*
 
+## How to use CheckFace
+
+First, use the [Chrome Extension](https://chrome.google.com/webstore/detail/check-face/pbfneacmjmcjdbeonggmoanjpaklahfk) to generate the face for the hash in a web environment as is shown  
+![Download Checkface](/docs/assets/images/screenshots/download.gif)
+
+Once downloaded, verify the CheckFace by using the [Context-Menu Extension](https://github.com/check-face/checkface/releases) to generate another checkface as shown below  
+![Download Checkface](/docs/assets/images/screenshots/verify.gif)
+
+You should already know if they're the same! EASY
+
 ## Our Stack
    - [Nvidia StyleGAN](https://stylegan.xyz/code)
      - Tensorflow
@@ -70,7 +80,9 @@ Build and run from source only at the moment.
 
 ### Backend API
 
-Prerequisites
+Request images at [api.checkface.ml/api/face?value=example&dim=300](https://api.checkface.ml/api/face?value=example&dim=300).
+
+Prerequisites to run the backend server
 
   - GPU with sufficient VRAM to hold the model
   - Nvidia Docker runtime (only supported on Linux, until HyperV adds GPU passthrough support)
