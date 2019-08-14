@@ -70,7 +70,9 @@ Build and run from source only at the moment.
 
 ### Backend API
 
-Prerequisites
+Request images at [api.checkface.ml/api/face?value=example&dim=300](https://api.checkface.ml/api/face?value=example&dim=300).
+
+Prerequisites to run the backend server
 
   - GPU with sufficient VRAM to hold the model
   - Nvidia Docker runtime (only supported on Linux, until HyperV adds GPU passthrough support)
