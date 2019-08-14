@@ -117,7 +117,7 @@ image_dim = 300
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
 
-@app.route('/status', methods=['GET'])
+@app.route('/status/', methods=['GET'])
 def status():
     return ''
 
@@ -129,8 +129,17 @@ def home():
 q = queue.Queue()
 doneJobSeeds = { "apple", "banana", "orange" }
 
-@app.route('/api/<path:hash>', methods=['GET'])
-def image_generation(hash):
+
+@app.route('/api/<string:hash>', methods=['GET'])
+def image_generation_legacy(hash):
+    '''
+    string as a type will accept anything without a slash
+    path as a type would accept slashes as well
+
+    https://flask.palletsprojects.com/en/1.0.x/quickstart/#variable-rules
+
+    '''
+
     os.makedirs("outputImages", exist_ok=True)
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
     requested_image = image_dim
@@ -149,13 +158,39 @@ def image_generation(hash):
         print(f"Image file {name} already exists")
     return send_file(name, mimetype='image/jpg')
 
-@app.route('/hashdata/<path:hash>', methods=['GET'])
-def hashlatentdata(hash):
+@app.route('/api/face/', methods=['GET'])
+def image_generation():
+    os.makedirs("outputImages", exist_ok=True)
+    hash = request.args.get('value')
+    if not hash:
+        hash = ''
+    seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
+    requested_image = image_dim
+    try:
+        requested_image = int(request.args.get('dim')) # if key doesn't exist, returns None
+        if requested_image is None or requested_image < 10 or requested_image > 1024:
+            requested_image = image_dim
+    except:
+        requested_image = image_dim
+    name = os.path.join(os.getcwd(), "outputImages", f"s{seed}_{requested_image}.jpg")
+    if not os.path.isfile(name):
+        q.put((seed, requested_image))
+        while not ((seed, requested_image) in doneJobSeeds):
+            time.sleep(0.05)
+    else:
+        print(f"Image file {name} already exists")
+    return send_file(name, mimetype='image/jpg')
+
+@app.route('/api/hashdata/', methods=['GET'])
+def hashlatentdata():
+    hash = request.args.get('value')
+    if not hash:
+        hash = ''
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
     latent = fromSeed(seed)
-    return jsonify({ "seed": seed, "qlatent": latent.tolist()})
+    return jsonify({"seed": seed, "qlatent": latent.tolist()})
 
-@app.route('/queue', methods=['GET'])
+@app.route('/api/queue/', methods=['GET'])
 def healthcheck():
     return jsonify({"queue": q.qsize()})
 
