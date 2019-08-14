@@ -55,7 +55,7 @@ namespace checkface_dotnet
                 pictureBox1.Image = Properties.Resources.loader;
                 pictureBox1.SizeMode = PictureBoxSizeMode.CenterImage;
                 string enc = System.Web.HttpUtility.UrlEncode(textBox1.Text);
-                pictureBox1.LoadAsync($"https://api.checkface.ml/api/{enc}?dim=300");
+                pictureBox1.LoadAsync($"https://api.checkface.ml/api/face/?value={enc}&dim=300");
             }
         }
     }

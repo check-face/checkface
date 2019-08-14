@@ -10,7 +10,7 @@ console.log("Hashdata:", hashdata);
 let img = document.querySelector("#checkfaceimg");
 let siteurl = `https://checkface.ml/`;
 if(hashdata.sum) {
-    img.src = `https://api.checkface.ml/api/${hashdata.sum}?dim=400`;
+    img.src = `https://api.checkface.ml/api/face/?value=${hashdata.sum}&dim=400`;
     siteurl += `?value=${hashdata.sum}`
 }
 else {
