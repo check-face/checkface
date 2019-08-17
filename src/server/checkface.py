@@ -21,6 +21,7 @@ import numpy as np
 import queue
 import hashlib
 from flask import send_file, request, jsonify
+from prometheus_client import start_http_server, Summary, Gauge, Counter
 np.set_printoptions(threshold=np.inf)
 
 import flask
@@ -112,7 +113,8 @@ def toImages(Gs, latents, image_size):
 
 image_dim = 300
 
-
+REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
+c = Counter('image_generating', 'Number of images generated')
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
@@ -161,13 +163,15 @@ def image_generation_legacy(hash):
     '''
     return handle_generate_image_request(hash)
 
+
 @app.route('/api/face/', methods=['GET'])
 def image_generation():
-    os.makedirs("outputImages", exist_ok=True)
-    hash = request.args.get('value')
-    if not hash:
-        hash = ''
-    return handle_generate_image_request(hash)
+    with REQUEST_TIME.time():
+        os.makedirs("outputImages", exist_ok=True)
+        hash = request.args.get('value')
+        if not hash:
+            hash = ''
+        return handle_generate_image_request(hash)
 
 @app.route('/api/hashdata/', methods=['GET'])
 def hashlatentdata():
@@ -206,9 +210,11 @@ def worker():
             
             print(f"Finished job {seed}")
             doneJobSeeds.add((seed, requested_image))
+            c.inc()
 
 t1 = threading.Thread(target=worker, args=[])
 t1.start()
 
 if __name__ == "__main__":
+    start_http_server(8000)
     app.run(host="0.0.0.0", port="443", ssl_context='adhoc')
