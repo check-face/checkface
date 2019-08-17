@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import flask
 from encoder.perceptual_model import PerceptualModel
 from encoder.generator_model import Generator
 import threading
@@ -24,10 +25,10 @@ from flask import send_file, request, jsonify
 from prometheus_client import start_http_server, Summary, Gauge, Counter
 np.set_printoptions(threshold=np.inf)
 
-import flask
 
 sys.path.append('/app/dnnlib')
 # dnnlib.tflib.init_tf()
+
 
 def fetch_model():
     url = 'https://drive.google.com/uc?id=1-O8VHNOpBNHnQyn0yz_pK3PHoc3CboC3'
@@ -39,15 +40,19 @@ def fetch_model():
 synthesis_kwargs = dict(output_transform=dict(
     func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=20)
 
-#We need to have access to this dimension to generate qlatents and we don't want to have to access
-#the massive Gs object outside of the worker thread, thus we update here when we can.
+# We need to have access to this dimension to generate qlatents and we don't
+# want to have to access the massive Gs object outside of the worker thread,
+# thus we update here when we can.
+
 GsInputDim = 512
+
 
 def fromSeed(seed, dim=0, dimOffset=0):
     qlat = np.random.RandomState(seed).randn(1, GsInputDim)[0]
     if dimOffset != 0:
         qlat[dim] += dimOffset
     return qlat
+
 
 dlatent_avg = ""
 
@@ -59,6 +64,7 @@ def truncTrick(dlatents, psi=0.7, cutoff=8):
     coefs = np.where(layer_idx < cutoff, psi * ones, ones)
     dlatents = (dlatents - dlatent_avg) * coefs + dlatent_avg
     return dlatents
+
 
 def toDLat(Gs, lat, useTruncTrick=True):
     lat = np.array(lat)
@@ -100,7 +106,8 @@ def toImages(Gs, latents, image_size):
         network = "generator network"
     else:
         images = Gs.components.synthesis.run(
-            latents, randomize_noise=False, structure='linear', **synthesis_kwargs)
+            latents, randomize_noise=False, structure='linear',
+            **synthesis_kwargs)
         network = "synthesis component"
     diff = time.time() - start
 
@@ -113,23 +120,28 @@ def toImages(Gs, latents, image_size):
 
 image_dim = 300
 
-REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
+REQUEST_TIME = Summary('request_processing_seconds',
+                       'Time spent processing request')
 c = Counter('image_generating', 'Number of images generated')
+g = Gauge('job_queue', 'Number of jobs in the queue')
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
+
 
 @app.route('/status/', methods=['GET'])
 def status():
     return ''
 
+
 @app.route('/', methods=['GET'])
 def home():
     return 'It works'
 
+
 # such a queue
 q = queue.Queue()
-doneJobSeeds = { "apple", "banana", "orange" }
+doneJobSeeds = {"apple", "banana", "orange"}
 
 
 def handle_generate_image_request(hash):
@@ -137,20 +149,23 @@ def handle_generate_image_request(hash):
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
     requested_image = image_dim
     try:
-        requested_image = int(request.args.get('dim')) # if key doesn't exist, returns None
-        if requested_image is None or requested_image < 10 or requested_image > 1024:
+        # if key doesn't exist, returns None
+        requested_image = int(request.args.get('dim'))
+        if (requested_image is None or requested_image < 10 or requested_image > 1024):
             requested_image = image_dim
     except:
         requested_image = image_dim
     name = os.path.join(os.getcwd(), "outputImages",
-        f"s{seed}_{requested_image}.jpg")
+                        f"s{seed}_{requested_image}.jpg")
     if not os.path.isfile(name):
         q.put((seed, requested_image))
+        g.inc(1)
         while not ((seed, requested_image) in doneJobSeeds):
             time.sleep(0.05)
     else:
         print(f"Image file {name} already exists")
     return send_file(name, mimetype='image/jpg')
+
 
 @app.route('/api/<string:hash>', methods=['GET'])
 def image_generation_legacy(hash):
@@ -173,6 +188,7 @@ def image_generation():
             hash = ''
         return handle_generate_image_request(hash)
 
+
 @app.route('/api/hashdata/', methods=['GET'])
 def hashlatentdata():
     hash = request.args.get('value')
@@ -181,6 +197,7 @@ def hashlatentdata():
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
     latent = fromSeed(seed)
     return jsonify({"seed": seed, "qlatent": latent.tolist()})
+
 
 @app.route('/api/queue/', methods=['GET'])
 def healthcheck():
@@ -192,25 +209,29 @@ def worker():
     Gs = fetch_model()
     dlatent_avg = Gs.get_var('dlatent_avg')
 
-    #Setup for the other bits of the program, hacky and vulnerable to race conditions and might have old data
+    # Setup for the other bits of the program, hacky and vulnerable to race
+    # conditions and might have old data
     GsInputDim = Gs.input_shape[1]
 
     while True:
         while q.empty():
             time.sleep(0.05)
-            #print('waiting for job')
+            # print('waiting for job')
         else:
             seed, requested_image = q.get()
-            name = os.path.join(os.getcwd(), "outputImages", f"s{seed}_{requested_image}.jpg")
+            g.dec(1)
+            name = os.path.join(os.getcwd(), "outputImages",
+                                f"s{seed}_{requested_image}.jpg")
             print(f"Running job {seed}_{requested_image}")
             latents = [fromSeed(seed)]
-            
+
             images = toImages(Gs, latents, requested_image)
             images[0].save(name, 'JPEG')
-            
+
             print(f"Finished job {seed}")
             doneJobSeeds.add((seed, requested_image))
             c.inc()
+
 
 t1 = threading.Thread(target=worker, args=[])
 t1.start()
