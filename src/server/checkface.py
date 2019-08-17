@@ -69,7 +69,7 @@ def truncTrick(dlatents, psi=0.7, cutoff=8):
 def toDLat(Gs, lat, useTruncTrick=True):
     lat = np.array(lat)
     if lat.shape[0] == 512:
-        lats = Gs.components.mapping.run(np.array([lat]), None)
+        lats = Gs.components.mappinjobQueuerun(np.array([lat]), None)
         if useTruncTrick:
             lat = truncTrick(lats)[0]
         else:
@@ -90,40 +90,43 @@ def chooseQorDLat(latent1, latent2):
 
 
 def toImages(Gs, latents, image_size):
-    start = time.time()
-    if(isinstance(latents, list)):
-        isDlat = False
-        for lat in latents:
-            if lat.shape[0] == 18:
-                isDlat = True
-                break
-        if isDlat:
-            latents = [toDLat(lat) for lat in latents]
+    with generatorNetworkTime.time():
+        start = time.time()
+        if(isinstance(latents, list)):
+            isDlat = False
+            for lat in latents:
+                if lat.shape[0] == 18:
+                    isDlat = True
+                    break
+            if isDlat:
+                latents = [toDLat(lat) for lat in latents]
 
-    latents = np.array(latents)
-    if latents.shape[1] == 512:
-        images = Gs.run(latents, None, **synthesis_kwargs)
-        network = "generator network"
-    else:
-        images = Gs.components.synthesis.run(
-            latents, randomize_noise=False, structure='linear',
-            **synthesis_kwargs)
-        network = "synthesis component"
-    diff = time.time() - start
+        latents = np.array(latents)
+        if latents.shape[1] == 512:
+            images = Gs.run(latents, None, **synthesis_kwargs)
+            network = "generator network"
+        else:
+            images = Gs.components.synthesis.run(
+                latents, randomize_noise=False, structure='linear',
+                **synthesis_kwargs)
+            network = "synthesis component"
+        diff = time.time() - start
 
-    print(f"Took {diff:.2f} seconds to run {network}")
-    pilImages = [PIL.Image.fromarray(seed, 'RGB').resize(
-        (image_size, image_size), PIL.Image.ANTIALIAS) for seed in images]
+        print(f"Took {diff:.2f} seconds to run {network}")
+        pilImages = [PIL.Image.fromarray(seed, 'RGB').resize(
+            (image_size, image_size), PIL.Image.ANTIALIAS) for seed in images]
 
-    return pilImages
+        return pilImages
 
 
 image_dim = 300
 
-REQUEST_TIME = Summary('request_processing_seconds',
-                       'Time spent processing request')
-c = Counter('image_generating', 'Number of images generated')
-g = Gauge('job_queue', 'Number of jobs in the queue')
+requestTimeSummary = Summary('request_processing_seconds',
+                             'Time spent processing request')
+imagesGenCounter = Counter('image_generating', 'Number of images generated')
+jobQueue = Gauge('job_queue', 'Number of jobs in the queue')
+generatorNetworkTime = Summary('generator_network_seconds', 'Time taken to run \
+                                the generator network')
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
@@ -159,7 +162,7 @@ def handle_generate_image_request(hash):
                         f"s{seed}_{requested_image}.jpg")
     if not os.path.isfile(name):
         q.put((seed, requested_image))
-        g.inc(1)
+        jobQueue.inc(1)
         while not ((seed, requested_image) in doneJobSeeds):
             time.sleep(0.05)
     else:
@@ -181,7 +184,7 @@ def image_generation_legacy(hash):
 
 @app.route('/api/face/', methods=['GET'])
 def image_generation():
-    with REQUEST_TIME.time():
+    with requestTimeSummary.time():
         os.makedirs("outputImages", exist_ok=True)
         hash = request.args.get('value')
         if not hash:
@@ -219,7 +222,7 @@ def worker():
             # print('waiting for job')
         else:
             seed, requested_image = q.get()
-            g.dec(1)
+            jobQueue.dec(1)
             name = os.path.join(os.getcwd(), "outputImages",
                                 f"s{seed}_{requested_image}.jpg")
             print(f"Running job {seed}_{requested_image}")
@@ -230,7 +233,7 @@ def worker():
 
             print(f"Finished job {seed}")
             doneJobSeeds.add((seed, requested_image))
-            c.inc()
+            imagesGenCounter.inc()
 
 
 t1 = threading.Thread(target=worker, args=[])
