@@ -1,6 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Check Face",
+  "description": "Putting a face to a name.",
   "version": "1.2",
   "content_scripts": [
     {
