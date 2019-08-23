@@ -113,8 +113,11 @@ def toImages(Gs, latents, image_size):
         diff = time.time() - start
 
         print(f"Took {diff:.2f} seconds to run {network}")
-        pilImages = [PIL.Image.fromarray(seed, 'RGB').resize(
-            (image_size, image_size), PIL.Image.ANTIALIAS) for seed in images]
+        pilImages = [PIL.Image.fromarray(img, 'RGB') for img in images]
+        if image_size:
+            pilImages = [img.resize(
+                (image_size, image_size), PIL.Image.ANTIALIAS)
+                for img in images]
 
         return pilImages
 
@@ -150,20 +153,22 @@ doneJobSeeds = {"apple", "banana", "orange"}
 def handle_generate_image_request(hash):
     os.makedirs("outputImages", exist_ok=True)
     seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
-    requested_image = image_dim
+    requested_image_dim = image_dim
     try:
         # if key doesn't exist, returns None
-        requested_image = int(request.args.get('dim'))
-        if (requested_image is None or requested_image < 10 or requested_image > 1024):
-            requested_image = image_dim
+        requested_image_dim = int(request.args.get('dim'))
+        if (requested_image_dim is None or
+                requested_image_dim < 10 or
+                requested_image_dim > 1024):
+            requested_image_dim = image_dim
     except:
-        requested_image = image_dim
+        requested_image_dim = image_dim
     name = os.path.join(os.getcwd(), "outputImages",
-                        f"s{seed}_{requested_image}.jpg")
+                        f"s{seed}_{requested_image_dim}.jpg")
     if not os.path.isfile(name):
-        q.put((seed, requested_image))
+        q.put((seed, requested_image_dim))
         jobQueue.inc(1)
-        while not ((seed, requested_image) in doneJobSeeds):
+        while not ((seed, requested_image_dim) in doneJobSeeds):
             time.sleep(0.05)
     else:
         print(f"Image file {name} already exists")
@@ -206,6 +211,17 @@ def hashlatentdata():
 def healthcheck():
     return jsonify({"queue": q.qsize()})
 
+@app.route('/debug', methods=['GET'])
+def debugthing():
+    return(str(list(doneJobSeeds)))
+
+
+def get_batch(batchsize):
+    for i in range(batchsize):
+        if not q.empty():
+            yield q.get()
+            jobQueue.dec(1)
+
 
 def worker():
     dnnlib.tflib.init_tf()
@@ -221,19 +237,30 @@ def worker():
             time.sleep(0.05)
             # print('waiting for job')
         else:
-            seed, requested_image = q.get()
-            jobQueue.dec(1)
-            name = os.path.join(os.getcwd(), "outputImages",
-                                f"s{seed}_{requested_image}.jpg")
-            print(f"Running job {seed}_{requested_image}")
-            latents = [fromSeed(seed)]
+            zipped_batch = list(get_batch(20))
+            batch = list(zip(*zipped_batch))
+            
+            seeds = batch[0]
+            requested_image_dims = batch[1]
+            names = [os.path.join(
+                os.getcwd(), "outputImages",
+                f"s{seed}_{requested_image_dim}.jpg")
+                for (seed, requested_image_dim) in zipped_batch]
 
-            images = toImages(Gs, latents, requested_image)
-            images[0].save(name, 'JPEG')
+            print(f"Running jobs {str(zipped_batch)}")
+            latents = np.array([fromSeed(seed) for seed in seeds])
 
-            print(f"Finished job {seed}")
-            doneJobSeeds.add((seed, requested_image))
-            imagesGenCounter.inc()
+            images = toImages(Gs, latents, None)
+            joboutput = zip(images, zipped_batch, names)
+            for img, request, name in joboutput:
+                seed, image_size = request
+                resized = img.resize(
+                    (image_size, image_size), PIL.Image.ANTIALIAS)
+                resized.save(name, 'JPEG')
+                doneJobSeeds.add(request)
+                imagesGenCounter.inc()
+
+            print(f"Finished batch job")
 
 
 t1 = threading.Thread(target=worker, args=[])
