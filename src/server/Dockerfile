@@ -1,14 +1,17 @@
-# FROM ufoym/deepo:tensorflow-py36-cu100
-FROM ufoym/deepo
-# RUN pip install ipython pillow psutil requests tensorflow==1.13.1 tqdm keras
-RUN pip uninstall -y tf-nightly-gpu-2.0-preview
-RUN pip install tensorflow-gpu
-
+FROM nvidia/cuda:10.0-base-ubuntu18.04
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends software-properties-common
+RUN add-apt-repository ppa:deadsnakes/ppa
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends python3.7 wget
+RUN wget -O ~/get-pip.py https://bootstrap.pypa.io/get-pip.py
+RUN python3.7 ~/get-pip.py
+COPY ./requirements.txt /app/requirements.txt
+RUN pip install -r /app/requirements.txt
 COPY ./dnnlib /app/dnnlib
 COPY ./fetchModel.py /app/fetchModel.py
 WORKDIR /app
-RUN python fetchModel.py
-RUN pip install flask
+RUN python3.7 fetchModel.py
 COPY . /app
 
-CMD ["python", "checkface.py"]
+CMD ["python3.7", "checkface.py"]
