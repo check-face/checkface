@@ -1,91 +1,68 @@
-/* Small Devices, Tablets */
 
-@media only screen and (min-width: 768px) {
+.top-page-container {
+    display: grid;
+    grid-template-columns: 1auto 1max-content 1auto;
+    grid-template-rows: 1min-content 1auto 1auto;
+    grid-template-areas: "logo title links" "image image image" "form form form";
+    position: relative; /* don't be behind absolute positioned strips */
+    margin: 35px 25px;
+    grid-gap: 20px;
+}
 
-    .header-right {
-        display: block;
-        float: right;
-        padding: 6px 20px;
+.header-running-text {
+    display: none;
+}
+
+@media only screen and (min-width: 680px) {
+    .top-page-container {
+        display: grid;
+        grid-template-columns: auto 2fr 5fr auto;
+        grid-template-rows: 1min-content 1auto 1auto;
+        grid-template-areas: "logo title title links" "form form image image";
+        position: relative; /* don't be behind absolute positioned strips */
     }
 
+    .header-running-text {
+        display: block;
+    }
+}
+
+
+@media only screen and (min-width: 1000px) {
+    .top-page-container {
+        margin: 35px 20px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto auto;
+        grid-template-areas: "logo links" "title image" "form image";
+    }
+    
     .header-headline {
         text-align: left;
         max-width: 380px;
         padding-top: 75px;
     }
-
+    
     .header-running-text {
         line-height: 30px;
         margin: 0;
         text-align: left;
     }
 
-    .hero {
-        padding-bottom: 230px;
+    .top-page-container {
+        margin: 35px 10%;
     }
 
-    .hero-button {
-        margin-top: 30px;
-        margin-bottom: 30px;
+    .email-form-div {
+        max-width: inherit;
+        margin: auto;
     }
 
-    .hero-right {
-        text-align: left;
+    .webscope {
+        margin-top: 0;
     }
 
-
-    .feature-section {
-        padding-top: 60px;
+    .social-links {
+        float: right;
     }
-
-    .features-headline {
-        color: white;
-        padding-bottom: 70px;
-    }
-
-    .logos {
-        padding: 30px;
-        max-width: 100%;
-    }
-
-    .white-section-text {
-        text-align: justify;
-        padding-top: 80px;
-        padding-left: 100px;
-    }
-
-
-
-}
-
-.team {
-    padding-bottom: 130px;
-
-}
-
-.team-member {
-    text-align: center;
-}
-
-.email-form-div {
-    max-width: inherit;
-    margin: auto;
-}
-
-.webscope {
-    margin-top: 0;
-}
-
-.social-links {
-    float: right;
-}
-
-/* Medium Devices, Desktops */
-
-@media only screen and (min-width: 992px) {
-}
-
-/* Large Devices, Wide Screens */
-
-@media only screen and (min-width: 1200px) {
 }
