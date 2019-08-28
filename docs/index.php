@@ -4,7 +4,7 @@
 $value = $_GET["value"];
 if(!isset($value)) { include("index.html"); }
 else {
-  $imgurl = "https://api.checkface.ml/api/face/?value=".rawurlencode($value)."&dim=500"; 
+  $imgurl = "https://api.checkface.ml/api/face/?value=".rawurlencode($value); 
   $index = fopen("index.html", "r");
   while(!feof($index)) {
       $line = fgets($index);
@@ -12,12 +12,12 @@ else {
           ?>  <meta property="og:title" content="Check Face - <?php echo htmlspecialchars($value); ?>" \>
 <?php
       }
-      else if(strpos($line, 'og:image') !== false) {
-        ?>  <meta property="og:image" content="<?php echo $imgurl; ?>" \>
+      else if(strpos($line, '"og:image" content="assets/images/face.jpg"') !== false) {
+        ?>  <meta property="og:image" content="<?php echo $imgurl."&dim=1024"; ?>" \>
 <?php
       }
       else if(strpos($line, 'id="my-image"') !== false) {
-        ?>        <img id="my-image" src="<?php echo $imgurl; ?>" />
+        ?>        <img id="my-image" src="<?php echo $imgurl."&dim=500"; ?>" />
 <?php
       }
       else {
