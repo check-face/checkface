@@ -2,8 +2,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.85" />
   <title>Check Face</title>
   <meta name="Check Face" content="width=device-width, initial-scale=1" />
   <meta property="og:title" content="Check Face" />
@@ -11,7 +10,7 @@
   <meta property="og:image" content="assets/images/face.jpg" />
   <meta property="og:image:width" content="1024" />
   <meta property="og:image:height" content="1024" />
-  <meta property="og:description" content="Generate a an easily recognizable face for any hash" />
+  <meta property="og:description" content="Generate an easily recognizable face for any hash" />
   <meta property="og:site_name" content="Check Face" />
   <link rel="shortcut icon" type="image/png" href="assets/images/face.jpg" />
   <link rel="search" type="application/opensearchdescription+xml" title="CheckFace" href="/opensearch.xml" />
@@ -30,60 +29,40 @@
   <!-- Navigation
     ================================================== -->
   <div class="hero-background">
-    <div>
-      <img class="strips" src="assets/images/strips.png" />
-    </div>
-    <div class="container">
-      <div class="header-container header">
-        <a class="navbar-brand logo" href="#">
-          <img class="logo" src="assets/images/face.jpg" />
+    <img class="strips" src="assets/images/strips.png" />
+    <div class="top-page-container">
+      <img class="header-logo" width="100px" src="assets/images/face.jpg" />
+
+      <div class="header-links">
+        <a class="navbar-item" href="https://github.com/check-face/checkface"><img alt="github project" src="assets/images/GitHub-Mark-64px.png"></a>
+      </div>
+      <div class="top-page-title">
+        <h1 class="header-headline bold">Check Face <br /></h1>
+        <h4 class="header-running-text light">Putting a face to a name.</h4>
+      </div>
+      <div class="top-page-form">
+        <form id="searchform" action="/index.html" >
+          <h4>Try this:</h4>
+          <br />
+          <input id="object" type="text" name="value" style="color:black;" />
+          <input type="hidden" name="searchrequest" value="get">
+          <br />
+          <button class="hero-btn" input id="submit-btn" type="submit" value="Submit">
+            Submit
+          </button>
+        </form>
+        <a href="#download-section">
+          <button class="hero-btn">Download</button>
         </a>
-
-        <div class="header-right">
-          <a class="navbar-item" href="#team">OUR TEAM</a>
-
-          <a class="navbar-item" href="#features">FEATURES</a>
-          <a class="navbar-item" href="https://github.com/check-face/checkface">GITHUB REPO</a>
-        </div>
       </div>
-      <!--navigation-->
 
-      <!-- Hero-Section
-          ================================================== -->
-
-      <div class="hero row">
-        <div class="hero-right col-sm-6 col-sm-6">
-          <h1 class="header-headline bold">Check Face <br /></h1>
-
-          <h4 class="header-running-text light">Putting a face to a name.</h4>
-
-          <form id="searchform" action="/index.html" >
-            <h4>Try this:</h4>
-            <br />
-            <input id="object" type="text" name="value" style="color:black;" />
-            <input type="hidden" name="searchrequest" value="get">
-            <br />
-            <button class="submit-btn" input id="submit-btn" type="submit" value="Submit">
-              Submit
-            </button>
-          </form>
-          <a href="#download-section">
-            <button class="hero-btn">Download</button>
-          </a>
-        </div>
-        <div class="hero-right col-sm-6 col-sm-6" style="text-align: center;" id="imagecontainer">
-          <img id="my-image" />
-        </div>
-
-        <div><img class="mouse" src="assets/images/mouse.svg" /></div>
-
-        <!--hero-->
+      <div style="text-align: center;" id="imagecontainer">
+        <img id="my-image" />
       </div>
     </div>
-    <!--hero-container-->
   </div>
-  <!--hero-background-->
-
+  <!-- hero-background -->
+<div style="display: initial;">
   <!-- Features
   ================================================== -->
 
@@ -92,37 +71,37 @@
       <h2 class="features-headline light">FEATURES</h2>
 
       <div class="col-sm-4 feature">
-        <div class="feature-icon feature-no-display">
+        <div class="feature-icon add-feature-no-display">
           <img class="feature-img" src="assets/images/responsive.svg" />
         </div>
-        <h5 class="feature-head-text feature-no-display">FULLY INTEGRATED</h5>
-        <p class="feature-subtext light feature-no-display">
+        <h5 class="feature-head-text add-feature-no-display">FULLY INTEGRATED</h5>
+        <p class="feature-subtext light add-feature-no-display">
           Looks amazing in the context of your development to verify that
           checksums are the same online and when you download files
         </p>
       </div>
 
       <div class="col-sm-4 feature">
-        <div class="feature-icon feature-no-display feature-display-mid">
+        <div class="feature-icon add-feature-no-display feature-display-mid">
           <img class="feature-img" src="assets/images/customizable.svg" />
         </div>
-        <h5 class="feature-head-text feature-no-display feature-display-mid">
+        <h5 class="feature-head-text add-feature-no-display feature-display-mid">
           FAST
         </h5>
-        <p class="feature-subtext light feature-no-display feature-display-mid">
+        <p class="feature-subtext light add-feature-no-display feature-display-mid">
           Powered by machine learning, we dynamically generate memorable faces
           based on the hash you don't want to use
         </p>
       </div>
 
       <div class="col-sm-4 feature">
-        <div class="feature-icon feature-no-display feature-display-last">
+        <div class="feature-icon add-feature-no-display feature-display-last">
           <img class="bullet-img" src="assets/images/design.svg" />
         </div>
-        <h5 class="feature-head-text feature-no-display feature-display-last">
+        <h5 class="feature-head-text add-feature-no-display feature-display-last">
           EASY
         </h5>
-        <p class="feature-subtext light feature-no-display feature-display-last">
+        <p class="feature-subtext light add-feature-no-display feature-display-last">
           A checksum you'll actually use. <br />
           Just right-click
         </p>
@@ -156,6 +135,8 @@
               src="assets/images/web-page-home.svg" /></a>
           <a href="https://github.com/olivercoad"><img class="team-social-icon"
               src="assets/images/team-github.svg" /></a>
+          <a href="https://linkedin.com/in/olivercoad"><img class="team-social-icon"
+            src="assets/images/team-linkedin.svg" /></a>
         </div>
       </div>
 
@@ -195,14 +176,6 @@
     <a href="https://github.com/check-face/checkface/releases">
       <button class="hero-btn">Desktop</button>
     </a>
-    <div id="newsletter-spinner">
-      <i class="fa fa-cog fa-spin" style="font-size:24px"></i>
-    </div>
-
-    <!--email-form-div-->
-
-    <div id="newsletter-loading-div"></div>
-    <!--email-form-->
   </div>
   <!--blue-section-->
   <div class="footer">
@@ -236,10 +209,6 @@
     <!--container-->
   </div>
   <!--footer-->
-
-  <script src="https://code.jquery.com/jquery-3.2.1.min.js"
-    integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-
   <script src="assets/js/script.js"></script>
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-140064290-1"></script>
@@ -250,7 +219,7 @@
 
     gtag('config', 'UA-140064290-1');
   </script>
-
+</div>
 </body>
 
 </html>
