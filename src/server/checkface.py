@@ -267,5 +267,5 @@ t1 = threading.Thread(target=worker, args=[])
 t1.start()
 
 if __name__ == "__main__":
-    start_http_server(8000)
-    app.run(host="0.0.0.0", port="443", ssl_context='adhoc')
+    start_http_server(int(os.getenv('METRICS_PORT', '8000')))
+    app.run(host="0.0.0.0", port=os.getenv('API_PORT', '8443'), ssl_context='adhoc')
