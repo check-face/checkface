@@ -27,3 +27,4 @@ Resources:
             Properties:
                 Path: /{proxy+}
                 Method: GET
+                ContentHandling: CONVERT_TO_BINARY
