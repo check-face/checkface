@@ -1,36 +1,29 @@
 console.log('Loading function');
 
-var http = require('http');
+var http = require('https');
 
 exports.handler = (event, context, callback) => {
-  //console.log('Received event:', JSON.stringify(event, null, 2));
-  var options = {
-    hostname: 'worker1.checkface.ml',
-    port: 443,
-    path: event.path,
-    method: 'GET',
-    // headers: event.headers
-  };
-
   console.log("EVENT: \n" + JSON.stringify(event, null, 2))
-  
-  var html = '<html><head><title>HTML from Application Loadbalancer/Lambda</title></head>' + 
-        '<body><h1>HTML from API Gateway/Lambda</h1></body></html>';
-  callback(null, html)
-  // return new Promise(function(resolve, reject) {
-  //   resolve(200);
-    // var req = http.request(options, res => {
-      
-    //   res.on('data', d => {
-    //     resolve(200);
-    //   })
-    // });
-    // req.end()
-  // })
-  // .then (()=>{
-  //       return {
-  //           contentType: 'text/html',
-  //           statusCode : 200
-  //       }
-  //   });
+  http.get('https://checkface.ml/index.html', (res) => {
+    const statusCode = res.statusCode;
+    const contentType = res.headers['content-type'];
+    if (statusCode != 200) {
+      callback(`Request Failed, status code ${statuscode}.`, null)
+    }
+
+    res.setEncoding('utf8');
+    let rawData = '';
+    res.on('data', (chunk) => { rawData += chunk; });
+    res.on('end', () => {
+      callback(null, {
+        statusCode: 200,
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: rawData
+      });
+    });
+  }).on('error', (e) => {
+    callback(`Got error: ${e.message}`, null);
+  });
 };
