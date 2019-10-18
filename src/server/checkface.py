@@ -237,7 +237,7 @@ def worker():
             time.sleep(0.05)
             # print('waiting for job')
         else:
-            zipped_batch = list(get_batch(20))
+            zipped_batch = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '20'))))
             batch = list(zip(*zipped_batch))
             
             seeds = batch[0]
@@ -268,4 +268,4 @@ t1.start()
 
 if __name__ == "__main__":
     start_http_server(int(os.getenv('METRICS_PORT', '8000')))
-    app.run(host="0.0.0.0", port=os.getenv('API_PORT', '8443'), ssl_context='adhoc')
+    app.run(host="0.0.0.0", port=os.getenv('API_PORT', '8080'))
