@@ -117,7 +117,7 @@ def toImages(Gs, latents, image_size):
         if image_size:
             pilImages = [img.resize(
                 (image_size, image_size), PIL.Image.ANTIALIAS)
-                for img in images]
+                for img in pilImages]
 
         return pilImages
 
