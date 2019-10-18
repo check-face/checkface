@@ -121,6 +121,11 @@ def toImages(Gs, latents, image_size):
 
         return pilImages
 
+def hashToSeed(hash):
+    if not hash:
+        hash = ''
+    return int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
+
 
 image_dim = 300
 
@@ -150,9 +155,8 @@ q = queue.Queue()
 doneJobSeeds = {"apple", "banana", "orange"}
 
 
-def handle_generate_image_request(hash):
+def handle_generate_image_request(seed):
     os.makedirs("outputImages", exist_ok=True)
-    seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
     requested_image_dim = image_dim
     try:
         # if key doesn't exist, returns None
@@ -184,25 +188,28 @@ def image_generation_legacy(hash):
     https://flask.palletsprojects.com/en/1.0.x/quickstart/#variable-rules
 
     '''
-    return handle_generate_image_request(hash)
+    return handle_generate_image_request(hashToSeed(hash))
+
+def getRequestSeed(request):
+    hash = request.args.get('value')
+    seedstr = request.args.get('seed')
+    if seedstr:
+        seed = int(seedstr)
+    else:
+        seed = hashToSeed(hash)
+    return seed
 
 
 @app.route('/api/face/', methods=['GET'])
 def image_generation():
     with requestTimeSummary.time():
-        os.makedirs("outputImages", exist_ok=True)
-        hash = request.args.get('value')
-        if not hash:
-            hash = ''
-        return handle_generate_image_request(hash)
+        seed = getRequestSeed(request)
+        return handle_generate_image_request(seed)
 
 
 @app.route('/api/hashdata/', methods=['GET'])
 def hashlatentdata():
-    hash = request.args.get('value')
-    if not hash:
-        hash = ''
-    seed = int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
+    seed = getRequestSeed(request)
     latent = fromSeed(seed)
     return jsonify({"seed": seed, "qlatent": latent.tolist()})
 
