@@ -126,8 +126,28 @@ def hashToSeed(hash):
         hash = ''
     return int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
 
+class GenerateImageJob:
+    def __init__(self, seed, image_dim):
+        self.seed = seed
+        self.image_dim = image_dim
+        self.evt = threading.Event()
 
-image_dim = 300
+    def __str__(self):
+        return f"s{self.seed}_{self.image_dim}"
+
+    def set_result(self, img):
+        self.img = img
+        self.evt.set()
+
+    def wait_for_img(self, timeout):
+        if self.evt.wait(timeout):
+            return self.img
+        else:
+            return None
+
+
+
+default_image_dim = 300
 
 requestTimeSummary = Summary('request_processing_seconds',
                              'Time spent processing request')
@@ -152,28 +172,35 @@ def home():
 
 # such a queue
 q = queue.Queue()
-doneJobSeeds = {"apple", "banana", "orange"}
 
 
 def handle_generate_image_request(seed):
     os.makedirs("outputImages", exist_ok=True)
-    requested_image_dim = image_dim
+    image_dim = default_image_dim
     try:
         # if key doesn't exist, returns None
-        requested_image_dim = int(request.args.get('dim'))
-        if (requested_image_dim is None or
-                requested_image_dim < 10 or
-                requested_image_dim > 1024):
-            requested_image_dim = image_dim
+        image_dim = int(request.args.get('dim'))
+        if (image_dim is None or
+                image_dim < 10 or
+                image_dim > 1024):
+            image_dim = default_image_dim
     except:
-        requested_image_dim = image_dim
+        image_dim = default_image_dim
     name = os.path.join(os.getcwd(), "outputImages",
-                        f"s{seed}_{requested_image_dim}.jpg")
+                        f"s{seed}_{image_dim}.jpg")
     if not os.path.isfile(name):
-        q.put((seed, requested_image_dim))
+        job = GenerateImageJob(seed, image_dim)
+        q.put(job)
         jobQueue.inc(1)
-        while not ((seed, requested_image_dim) in doneJobSeeds):
-            time.sleep(0.05)
+        img = job.wait_for_img(30)
+        if img:
+            resized = img.resize(
+                    (image_dim, image_dim), PIL.Image.ANTIALIAS)
+            resized.save(name, 'JPEG')
+        else:
+            raise Exception("Generating image failed or timed out")
+
+        
     else:
         print(f"Image file {name} already exists")
     return send_file(name, mimetype='image/jpg')
@@ -218,15 +245,13 @@ def hashlatentdata():
 def healthcheck():
     return jsonify({"queue": q.qsize()})
 
-@app.route('/debug', methods=['GET'])
-def debugthing():
-    return(str(list(doneJobSeeds)))
-
 
 def get_batch(batchsize):
-    for i in range(batchsize):
+    yield q.get(True) # will block until it gets a job
+    jobQueue.dec(1)
+    for i in range(batchsize-1):
         if not q.empty():
-            yield q.get()
+            yield q.get_nowait()
             jobQueue.dec(1)
 
 
@@ -239,40 +264,32 @@ def worker():
     # conditions and might have old data
     GsInputDim = Gs.input_shape[1]
 
+    print("Warming up generator network")
+    warmupNetwork = toImages(Gs, np.array([fromSeed(5)]), None)
+    print("Generator ready")
+
     while True:
-        while q.empty():
-            time.sleep(0.05)
-            # print('waiting for job')
-        else:
-            zipped_batch = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '20'))))
-            batch = list(zip(*zipped_batch))
-            
-            seeds = batch[0]
-            requested_image_dims = batch[1]
-            names = [os.path.join(
-                os.getcwd(), "outputImages",
-                f"s{seed}_{requested_image_dim}.jpg")
-                for (seed, requested_image_dim) in zipped_batch]
+        generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '20'))))
+        
+        seeds = [job.seed for job in generateImageJobs]
 
-            print(f"Running jobs {str(zipped_batch)}")
-            latents = np.array([fromSeed(seed) for seed in seeds])
+        print(f"Running jobs {[str(job) for job in generateImageJobs]}")
+        latents = np.array([fromSeed(seed) for seed in seeds])
 
-            images = toImages(Gs, latents, None)
-            joboutput = zip(images, zipped_batch, names)
-            for img, request, name in joboutput:
-                seed, image_size = request
-                resized = img.resize(
-                    (image_size, image_size), PIL.Image.ANTIALIAS)
-                resized.save(name, 'JPEG')
-                doneJobSeeds.add(request)
-                imagesGenCounter.inc()
+        images = toImages(Gs, latents, None)
+        for img, job in zip(images, generateImageJobs):
+            job.set_result(img)
+            imagesGenCounter.inc()
 
-            print(f"Finished batch job")
+        print(f"Finished batch job")
 
 
-t1 = threading.Thread(target=worker, args=[])
-t1.start()
 
 if __name__ == "__main__":
+    t1 = threading.Thread(target=worker, args=[])
+    t1.daemon = True # kill thread on program termination (to allow keyboard interrupt)
+    t1.start()
+
     start_http_server(int(os.getenv('METRICS_PORT', '8000')))
     app.run(host="0.0.0.0", port=os.getenv('API_PORT', '8080'))
+    print("Closing checkface server")
