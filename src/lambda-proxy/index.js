@@ -6,7 +6,6 @@ exports.handler = (event, context, callback) => {
   process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
   //console.log('Received event:', JSON.stringify(event, null, 2));
   
-
   //console.log("EVENT: \n" + JSON.stringify(event, null, 2));
 
   var options = {
@@ -30,29 +29,11 @@ exports.handler = (event, context, callback) => {
       callback(null, {
         statusCode: res.statusCode,
         headers: {"Content-Type": "image/jpg; charset=utf-8"},
-        body: body.toString("base64"),
+        image: body.toString("base64"),
         isBase64Encoded: true
       });
     });
   }).on('error', function(e) {
     console.log("Got error: " + e.message);
   });
-
-  
-  // return new Promise(function(resolve, reject) {
-  //   resolve(200);
-  // var req = http.request(options, res => {
-
-  //   res.on('data', d => {
-  //     resolve(200);
-  //   })
-  // });
-  // req.end()
-  // })
-  // .then (()=>{
-  //       return {
-  //           contentType: 'text/html',
-  //           statusCode : 200
-  //       }
-  //   });
 };
