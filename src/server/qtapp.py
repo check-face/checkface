@@ -29,11 +29,11 @@ np.set_printoptions(threshold=np.inf)
 sys.path.append('/app/dnnlib')
 # dnnlib.tflib.init_tf()
 
-
+output_path = r"C:\Users\Oliver\Source\Repos\stylegan\results\outgifs"
 def fetch_model():
-    url = 'https://drive.google.com/uc?id=1-O8VHNOpBNHnQyn0yz_pK3PHoc3CboC3'
+    snap = r"C:\Users\Oliver\Source\Repos\stylegan\results\00004-sgan-flower-1gpu\network-snapshot-008761.pkl"
 
-    with dnnlib.util.open_url(url, cache_dir='cache') as f:
+    with open(snap, 'rb') as f:
         _G, _D, Gs = pickle.load(f)
         return Gs
 
@@ -59,7 +59,7 @@ dlatent_avg = ""
 
 def truncTrick(dlatents, psi=0.7, cutoff=8):
     #   return (toDLat(lat) - dlatent_avg) * psi + avg
-    layer_idx = np.arange(18)[np.newaxis, :, np.newaxis]
+    layer_idx = np.arange(synthesis_layers)[np.newaxis, :, np.newaxis]
     ones = np.ones(layer_idx.shape, dtype=np.float32)
     coefs = np.where(layer_idx < cutoff, psi * ones, ones)
     dlatents = (dlatents - dlatent_avg) * coefs + dlatent_avg
@@ -69,7 +69,7 @@ def truncTrick(dlatents, psi=0.7, cutoff=8):
 def toDLat(Gs, lat, useTruncTrick=True):
     lat = np.array(lat)
     if lat.shape[0] == 512:
-        lats = Gs.components.mappinjobQueuerun(np.array([lat]), None)
+        lats = Gs.components.mapping.run(np.array([lat]), None)
         if useTruncTrick:
             lat = truncTrick(lats)[0]
         else:
@@ -80,10 +80,10 @@ def toDLat(Gs, lat, useTruncTrick=True):
 def chooseQorDLat(latent1, latent2):
     latent1 = np.array(latent1)
     latent2 = np.array(latent2)
-    if(latent1.shape[0] == 18 and latent2.shape[0] == 512):
+    if(latent1.shape[0] == synthesis_layers and latent2.shape[0] == 512):
         latent2 = toDLat(latent2)
 
-    if(latent1.shape[0] == 512 and latent2.shape[0] == 18):
+    if(latent1.shape[0] == 512 and latent2.shape[0] == synthesis_layers):
         latent1 = toDLat(latent1)
 
     return latent1, latent2
@@ -95,11 +95,11 @@ def toImages(Gs, latents, image_size):
     if(isinstance(latents, list)):
         isDlat = False
         for lat in latents:
-            if lat.shape[0] == 18:
+            if lat.shape[0] == synthesis_layers:
                 isDlat = True
                 break
         if isDlat:
-            latents = [toDLat(lat) for lat in latents]
+            latents = [toDLat(Gs, lat) for lat in latents]
 
     latents = np.array(latents)
     if latents.shape[1] == 512:
@@ -148,6 +148,7 @@ from PIL.ImageQt import ImageQt
 
 dnnlib.tflib.init_tf()
 Gs = fetch_model()
+synthesis_layers = Gs.components.synthesis.input_shape[1]
 dlatent_avg = Gs.get_var('dlatent_avg')
 
 class Window(QWidget):
@@ -160,7 +161,6 @@ class Window(QWidget):
         self.lat1seed = 13
         self.lat2seed = 13
         self.lerpval = 0
-        self.renderImage()
         grid.addWidget(self.imlabel, 0, 0)
 
         slider1 = self.createSlider()
@@ -174,10 +174,17 @@ class Window(QWidget):
         slider3 = self.createSlider()
         slider3.valueChanged.connect(self.slider3changed)
         grid.addWidget(slider3, 3, 0)
+        
+        button = QPushButton('Create gif')
+        button.clicked.connect(self.createGif)
+        grid.addWidget(button, 4, 0)
+        
         self.setLayout(grid)
 
         self.setWindowTitle("Checkface Sliders")
         #self.resize(400, 300)
+
+        self.renderImage()
 
     def createSlider(self):
         slider = QSlider(Qt.Horizontal)
@@ -206,11 +213,30 @@ class Window(QWidget):
         lat1 = fromSeed(self.lat1seed)
         lat2 = fromSeed(self.lat2seed)
         lat = lat1 * (1 - self.lerpval) + lat2 * self.lerpval
-        im = toImages(Gs, [lat], 300)[0]
+        im = toImages(Gs, [toDLat(Gs, lat)], 300)[0]
         imqt = ImageQt(im)
         qtim = QImage(imqt)
         pixmap = QPixmap.fromImage(qtim)
         self.imlabel.setPixmap(pixmap)
+
+    def createGif(self):
+        name = f's{str(self.lat1seed)} to s{str(self.lat2seed)}.gif'
+        os.makedirs(output_path, exist_ok=True)
+        filename = os.path.join(output_path, name)
+        print("Creating a gif file", filename)
+        try:
+            numFrames = 100
+            fps = 16
+            lat1 = fromSeed(self.lat1seed)
+            lat2 = fromSeed(self.lat2seed)
+            vals = [(math.sin(i) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, numFrames, False)]
+            latents = np.array([lat1 * i + lat2 * (1 - i) for i in vals])
+            frames = toImages(Gs, [toDLat(Gs, lat) for lat in latents], Gs.output_shape[2])
+            frames[0].save(filename, save_all=True, append_images=frames[1:], duration=1000/fps, loop=0)
+        except Exception as e:
+            print("Error making gif...", e)
+        else:
+            print("Saved gif to ", filename)
 
 
 if __name__ == '__main__':
