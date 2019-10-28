@@ -31,7 +31,7 @@ sys.path.append('/app/dnnlib')
 
 output_path = r"C:\Users\Oliver\Source\Repos\stylegan\results\outgifs"
 def fetch_model():
-    snap = r"C:\Users\Oliver\Source\Repos\stylegan\results\00004-sgan-flower-1gpu\network-snapshot-008761.pkl"
+    snap = r"C:\Users\Oliver\Source\Repos\stylegan\results\00005-sgan-flower-1gpu\network-snapshot-010441.pkl"
 
     with open(snap, 'rb') as f:
         _G, _D, Gs = pickle.load(f)
@@ -112,7 +112,7 @@ def toImages(Gs, latents, image_size):
         network = "synthesis component"
     diff = time.time() - start
 
-    print(f"Took {diff:.2f} seconds to run {network}")
+    #print(f"Took {diff:.2f} seconds to run {network}")
     pilImages = [PIL.Image.fromarray(img, 'RGB') for img in images]
     if image_size:
         pilImages = [img.resize(
@@ -140,7 +140,7 @@ def hashToSeed(hash):
 # app.exit(app.exec_())
 
 import sys
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout, QGroupBox, QLabel,
                              QMenu, QPushButton, QRadioButton, QVBoxLayout, QWidget, QSlider)
 from PyQt5.QtGui import QPixmap, QImage
@@ -159,20 +159,23 @@ class Window(QWidget):
         
         self.imlabel = QLabel()
         self.lat1seed = 13
-        self.lat2seed = 13
+        self.lat2seed = 5
         self.lerpval = 0
         grid.addWidget(self.imlabel, 0, 0)
 
         slider1 = self.createSlider()
         slider1.valueChanged.connect(self.slider1changed)
+        slider1.sliderReleased.connect(self.sliderReleased)
         grid.addWidget(slider1, 1, 0)
 
         slider2 = self.createSlider()
         slider2.valueChanged.connect(self.slider2changed)
+        slider2.sliderReleased.connect(self.sliderReleased)
         grid.addWidget(slider2, 2, 0)
 
         slider3 = self.createSlider()
         slider3.valueChanged.connect(self.slider3changed)
+        slider3.sliderReleased.connect(self.sliderReleased)
         grid.addWidget(slider3, 3, 0)
         
         button = QPushButton('Create gif')
@@ -184,7 +187,12 @@ class Window(QWidget):
         self.setWindowTitle("Checkface Sliders")
         #self.resize(400, 300)
 
-        self.renderImage()
+        self.animTheta = 0
+        self.enableAnim = True
+        timer = QTimer(self)
+        timer.timeout.connect(self.tick)
+        timer.start(100)
+
 
     def createSlider(self):
         slider = QSlider(Qt.Horizontal)
@@ -194,22 +202,32 @@ class Window(QWidget):
         slider.setSingleStep(1)
         return slider
 
+    def sliderReleased(self):
+        self.enableAnim = True
+
     def slider1changed(self, val):
         self.lat1seed = val
         self.lerpval = 0
         self.renderImage()
+        self.enableAnim = False
+        self.animTheta = 0
+
 
     def slider2changed(self, val):
         self.lat2seed = val
         self.lerpval = 1
+        self.animTheta = math.pi
         self.renderImage()
+        self.enableAnim = False
 
     def slider3changed(self, val):
         self.lerpval = val / 100
+        self.animTheta = math.acos(self.lerpval * 2 - 1) + math.pi
         self.renderImage()
+        self.enableAnim = False
 
     def renderImage(self):
-        print(f"s{self.lat1seed} to s{self.lat2seed} x {self.lerpval}")
+        #print(f"s{self.lat1seed} to s{self.lat2seed} x {self.lerpval}")
         lat1 = fromSeed(self.lat1seed)
         lat2 = fromSeed(self.lat2seed)
         lat = lat1 * (1 - self.lerpval) + lat2 * self.lerpval
@@ -237,6 +255,12 @@ class Window(QWidget):
             print("Error making gif...", e)
         else:
             print("Saved gif to ", filename)
+
+    def tick(self):
+        if self.enableAnim:
+            self.lerpval = (math.cos(self.animTheta + math.pi) + 1) * 0.5
+            self.animTheta = self.animTheta + math.pi * 2 / 100
+            self.renderImage()
 
 
 if __name__ == '__main__':
