@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 
 import flask
-from encoder.perceptual_model import PerceptualModel
-from encoder.generator_model import Generator
 import threading
 import subprocess
 import shutil
 import base64
 import math
-import config
-import dnnlib.tflib as tflib
-import dnnlib
 import time
 import os
 import PIL.Image
@@ -27,18 +22,24 @@ np.set_printoptions(threshold=np.inf)
 
 
 sys.path.append('/app/dnnlib')
-# dnnlib.tflib.init_tf()
 
 output_path = r"C:\Users\Oliver\Source\Repos\stylegan\results\outgifs"
-def fetch_model():
-    snap = r"C:\Users\Oliver\Source\Repos\stylegan\results\00005-sgan-flower-1gpu\network-snapshot-010441.pkl"
+# def fetch_model():
+#     snap = r"C:\Users\Oliver\Source\Repos\stylegan\results\00007-sgan-flower-1gpu\network-snapshot-008190.pkl"
+#     #snap = r"C:\Users\Oliver\Downloads\network-snapshot-010461\network-snapshot-010461.pkl"
 
-    with open(snap, 'rb') as f:
+#     with open(snap, 'rb') as f:
+#         _G, _D, Gs = pickle.load(f)
+#         return Gs
+
+def fetch_model():
+    url = 'https://drive.google.com/uc?id=1-O8VHNOpBNHnQyn0yz_pK3PHoc3CboC3'
+    import dnnlib
+    with dnnlib.util.open_url(url, cache_dir='cache') as f:
         _G, _D, Gs = pickle.load(f)
         return Gs
 
-synthesis_kwargs = dict(output_transform=dict(
-    func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=20)
+
 
 # We need to have access to this dimension to generate qlatents and we don't
 # want to have to access the massive Gs object outside of the worker thread,
@@ -140,27 +141,63 @@ def hashToSeed(hash):
 # app.exit(app.exec_())
 
 import sys
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QEvent, pyqtSignal, QObject
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout, QGroupBox, QLabel,
-                             QMenu, QPushButton, QRadioButton, QVBoxLayout, QWidget, QSlider)
+                             QMenu, QPushButton, QRadioButton, QVBoxLayout, QWidget, QSlider, QLineEdit)
 from PyQt5.QtGui import QPixmap, QImage
 from PIL.ImageQt import ImageQt
 
-dnnlib.tflib.init_tf()
-Gs = fetch_model()
-synthesis_layers = Gs.components.synthesis.input_shape[1]
-dlatent_avg = Gs.get_var('dlatent_avg')
+Gsmodel = None
+synthesis_layers = None
+dlatent_avg = None
+synthesis_kwargs = None
+
+def Gs():
+    global Gsmodel
+    global synthesis_layers
+    global dlatent_avg
+    global synthesis_kwargs
+    if Gsmodel:
+        return Gsmodel
+    else:
+        import dnnlib.tflib as tflib
+        import dnnlib
+        dnnlib.tflib.init_tf()
+        Gsmodel = fetch_model()
+        synthesis_layers = Gsmodel.components.synthesis.input_shape[1]
+        dlatent_avg = Gsmodel.get_var('dlatent_avg')
+        synthesis_kwargs = dict(output_transform=dict(
+            func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=20)
+        return Gsmodel
+
+class FocusChangedEventFilter(QObject):
+    focusChanged = pyqtSignal(bool)
+    def __init__(self, parent = None):
+        super(FocusChangedEventFilter, self).__init__(parent)
+
+    def eventFilter(self, object, event):
+        if event.type()== QEvent.FocusIn:
+            self.focusChanged.emit(True)
+        elif event.type()== QEvent.FocusOut:
+            self.focusChanged.emit(False)
+        return False
 
 class Window(QWidget):
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
 
         grid = QGridLayout()
-        
+        self.imresolution = 512
         self.imlabel = QLabel()
+        self.imlabel.setFixedWidth(self.imresolution)
+        self.imlabel.setFixedHeight(self.imresolution)
+        self.imlabel.setScaledContents(True)
         self.lat1seed = 13
         self.lat2seed = 5
         self.lerpval = 0
+        self.prevlat = fromSeed(1)
+        self.prevlat2seed = None
+        self.prevlat1seed = None
         grid.addWidget(self.imlabel, 0, 0)
 
         slider1 = self.createSlider()
@@ -181,6 +218,14 @@ class Window(QWidget):
         button = QPushButton('Create gif')
         button.clicked.connect(self.createGif)
         grid.addWidget(button, 4, 0)
+
+        self.textbox = QLineEdit("hello world")
+        self.textbox.textChanged.connect(self.textboxChanged)
+        fcev = FocusChangedEventFilter(self)
+        self.textbox.installEventFilter(fcev)
+        fcev.focusChanged.connect(self.textboxFocusChanged)
+        grid.addWidget(self.textbox, 5, 0)
+
         
         self.setLayout(grid)
 
@@ -188,10 +233,11 @@ class Window(QWidget):
         #self.resize(400, 300)
 
         self.animTheta = 0
+        self.animThetaPause = 0
         self.enableAnim = True
         timer = QTimer(self)
         timer.timeout.connect(self.tick)
-        timer.start(100)
+        timer.start(75)
 
 
     def createSlider(self):
@@ -208,34 +254,109 @@ class Window(QWidget):
     def slider1changed(self, val):
         self.lat1seed = val
         self.lerpval = 0
-        self.renderImage()
         self.enableAnim = False
         self.animTheta = 0
+        self.renderImage()
 
 
     def slider2changed(self, val):
         self.lat2seed = val
         self.lerpval = 1
         self.animTheta = math.pi
-        self.renderImage()
         self.enableAnim = False
+        self.renderImage()
+
 
     def slider3changed(self, val):
         self.lerpval = val / 100
         self.animTheta = math.acos(self.lerpval * 2 - 1) + math.pi
-        self.renderImage()
         self.enableAnim = False
+        self.renderImage()
+
+
+    def makeGrid(self, image):
+        img_w, img_h = image.size
+        background = PIL.Image.new('RGBA',(img_w * 3, img_h * 3), (255, 255, 255, 255))
+        bg_w, bg_h = background.size
+        background.paste(image,(0, 0))
+        background.paste(image,(img_w, 0))
+        background.paste(image,(img_w * 2, 0))
+        background.paste(image,(0, img_h))
+        background.paste(image,(img_w, img_h))
+        background.paste(image,(img_w * 2, img_h))
+        background.paste(image,(0, img_h * 2))
+        background.paste(image,(img_w, img_h * 2))
+        background.paste(image,(img_w * 2, img_h * 2))
+        return background
+
+    def showImage(self, im):
+        imqt = ImageQt(im)
+        qtim = QImage(imqt)
+        pixmap = QPixmap.fromImage(qtim)
+        self.imlabel.setPixmap(pixmap)
+
+        # Avoid garbage collecting QImage until has been replaced by next one
+        # Another solution would be to use pixmap.copy above - see https://stackoverflow.com/questions/40356441/python3-pillow-qt5-crash-when-i-resize-a-label-containing-an-image
+        self.previmqt = imqt
 
     def renderImage(self):
         #print(f"s{self.lat1seed} to s{self.lat2seed} x {self.lerpval}")
         lat1 = fromSeed(self.lat1seed)
         lat2 = fromSeed(self.lat2seed)
         lat = lat1 * (1 - self.lerpval) + lat2 * self.lerpval
-        im = toImages(Gs, [toDLat(Gs, lat)], 300)[0]
-        imqt = ImageQt(im)
-        qtim = QImage(imqt)
-        pixmap = QPixmap.fromImage(qtim)
-        self.imlabel.setPixmap(pixmap)
+        if np.array_equal(lat, self.prevlat):
+            return
+
+        self.prevlat = lat
+        im = toImages(Gs(), [toDLat(Gs(), lat)], self.imresolution)[0]
+        #im = PIL.Image.open(r"C:\Users\Oliver\Documents\StyleGanFaces\s705970_300.jpg")
+        #wd = 512
+        #im = im.resize((wd, wd), PIL.Image.ANTIALIAS)
+        self.showImage(im)
+
+    # def renderCheckImage(self):
+    #     lat = fromSeed(hashToSeed(self.textbox.text()))
+    #     im = toImages(Gs(), [toDLat(Gs(), lat)], self.imresolution)[0]
+    #     self.showImage(im)
+
+    def useCheckImages(self):
+        strs = self.textbox.text().split('-', 1)
+        self.lat1seed = hashToSeed(strs[0])
+        if len(strs) > 1:
+            self.lat2seed = hashToSeed(strs[1])
+        else:
+            self.lat2seed = self.lat1seed
+
+        if self.lat1seed != self.prevlat1seed:
+            self.lerpval = 0
+            self.animTheta = 0
+        elif self.lat2seed != self.prevlat2seed:
+            self.lerpval = 1
+            self.animTheta = math.pi
+
+        self.prevlat1seed = self.lat1seed
+        self.prevlat2seed = self.lat2seed
+        self.animThetaPause = math.pi * 2 / 6
+
+        self.renderImage()
+
+
+    def textboxChanged(self, value):
+        self.useCheckImages()
+        # self.renderCheckImage()
+
+    def textboxFocusChanged(self, isFocussed):
+        if isFocussed:
+            self.useCheckImages()
+
+        # if isFocussed:
+        #     self.enableAnim = False
+        #     self.renderCheckImage()
+        # else:
+        #     self.enableAnim = True
+        #     self.renderImage()
+
+
 
     def createGif(self):
         name = f's{str(self.lat1seed)} to s{str(self.lat2seed)}.gif'
@@ -249,7 +370,7 @@ class Window(QWidget):
             lat2 = fromSeed(self.lat2seed)
             vals = [(math.sin(i) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, numFrames, False)]
             latents = np.array([lat1 * i + lat2 * (1 - i) for i in vals])
-            frames = toImages(Gs, [toDLat(Gs, lat) for lat in latents], Gs.output_shape[2])
+            frames = toImages(Gs(), [toDLat(Gs(), lat) for lat in latents], Gs().output_shape[2])
             frames[0].save(filename, save_all=True, append_images=frames[1:], duration=1000/fps, loop=0)
         except Exception as e:
             print("Error making gif...", e)
@@ -259,7 +380,10 @@ class Window(QWidget):
     def tick(self):
         if self.enableAnim:
             self.lerpval = (math.cos(self.animTheta + math.pi) + 1) * 0.5
-            self.animTheta = self.animTheta + math.pi * 2 / 100
+            if self.animThetaPause > 0:
+                self.animThetaPause = self.animThetaPause - math.pi * 2 / 100
+            else:
+                self.animTheta = self.animTheta + math.pi * 2 / 100
             self.renderImage()
 
 
