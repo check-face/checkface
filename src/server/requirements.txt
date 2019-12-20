@@ -1,8 +1,11 @@
 absl-py==0.7.1
+asn1crypto==0.24.0
 astor==0.7.1
 certifi==2019.3.9
+cffi==1.12.3
 chardet==3.0.4
 Click==7.0
+cryptography==2.6.1
 Flask==1.0.2
 gast==0.2.2
 grpcio==1.20.1
@@ -17,8 +20,12 @@ Markdown==3.1
 MarkupSafe==1.1.1
 mock==3.0.5
 numpy==1.16.3
+pep8==1.7.1
 Pillow==6.0.0
+prometheus-client==0.7.1
 protobuf==3.7.1
+pycparser==2.19
+pyOpenSSL==19.0.0
 PyYAML==5.1
 requests==2.21.0
 scipy==1.2.1

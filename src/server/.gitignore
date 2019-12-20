@@ -1,4 +1,4 @@
 *.pyc
 \.vscode/
-
+outputImages/
 unperson_key\.json
