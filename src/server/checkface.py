@@ -69,7 +69,7 @@ def truncTrick(dlatents, psi=0.7, cutoff=8):
 def toDLat(Gs, lat, useTruncTrick=True):
     lat = np.array(lat)
     if lat.shape[0] == 512:
-        lats = Gs.components.mappinjobQueuerun(np.array([lat]), None)
+        lats = Gs.components.mapping.run(np.array([lat]), None)
         if useTruncTrick:
             lat = truncTrick(lats)[0]
         else:
@@ -99,7 +99,7 @@ def toImages(Gs, latents, image_size):
                     isDlat = True
                     break
             if isDlat:
-                latents = [toDLat(lat) for lat in latents]
+                latents = [toDLat(Gs, lat) for lat in latents]
 
         latents = np.array(latents)
         if latents.shape[1] == 512:
@@ -127,13 +127,13 @@ def hashToSeed(hash):
     return int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
 
 class GenerateImageJob:
-    def __init__(self, seed, image_dim):
-        self.seed = seed
-        self.image_dim = image_dim
+    def __init__(self, latent, name):
+        self.latent = latent
+        self.name = name
         self.evt = threading.Event()
 
     def __str__(self):
-        return f"s{self.seed}_{self.image_dim}"
+        return self.name
 
     def set_result(self, img):
         self.img = img
@@ -174,22 +174,30 @@ def home():
 q = queue.Queue()
 
 
-def handle_generate_image_request(seed):
-    os.makedirs("outputImages", exist_ok=True)
-    image_dim = default_image_dim
+def defaultedRequestInt(request, param_name, default_val, min_val, max_val):
+    val = default_val
     try:
         # if key doesn't exist, returns None
-        image_dim = int(request.args.get('dim'))
-        if (image_dim is None or
-                image_dim < 10 or
-                image_dim > 1024):
-            image_dim = default_image_dim
+        val = int(request.args.get(param_name))
+        if (val is None or
+                val < min_val or
+                val > max_val):
+            val = default_val
     except:
-        image_dim = default_image_dim
+        val = default_val
+    return val
+
+def getRequestedImageDim(request):
+    return defaultedRequestInt(request, 'dim', default_image_dim, 10, 1024)
+
+def handle_generate_image_request(seed):
+    os.makedirs("outputImages", exist_ok=True)
+    image_dim = getRequestedImageDim(request)
+
     name = os.path.join(os.getcwd(), "outputImages",
                         f"s{seed}_{image_dim}.jpg")
     if not os.path.isfile(name):
-        job = GenerateImageJob(seed, image_dim)
+        job = GenerateImageJob(fromSeed(seed), f"s{seed}_{image_dim}")
         q.put(job)
         jobQueue.inc(1)
         img = job.wait_for_img(30)
@@ -200,9 +208,9 @@ def handle_generate_image_request(seed):
         else:
             raise Exception("Generating image failed or timed out")
 
-        
+
     else:
-        print(f"Image file {name} already exists")
+        print(f"Image file already exists: {name}")
     return send_file(name, mimetype='image/jpg')
 
 
@@ -217,14 +225,17 @@ def image_generation_legacy(hash):
     '''
     return handle_generate_image_request(hashToSeed(hash))
 
-def getRequestSeed(request):
-    hash = request.args.get('value')
-    seedstr = request.args.get('seed')
+def useHashOrSeed(hash, seedstr):
     if seedstr:
         seed = int(seedstr)
     else:
         seed = hashToSeed(hash)
     return seed
+
+def getRequestSeed(request):
+    hash = request.args.get('value')
+    seedstr = request.args.get('seed')
+    return useHashOrSeed(hash, seedstr)
 
 
 @app.route('/api/face/', methods=['GET'])
@@ -239,6 +250,108 @@ def hashlatentdata():
     seed = getRequestSeed(request)
     latent = fromSeed(seed)
     return jsonify({"seed": seed, "qlatent": latent.tolist()})
+
+def generate_gif(from_seed, to_seed, num_frames, fps, image_dim, name):
+    latent1 = fromSeed(from_seed)
+    latent2 = fromSeed(to_seed)
+
+    vals = [(math.sin(i) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
+    latents = [latent1 * i + latent2 * (1 - i) for i in vals]
+
+    jobs = [GenerateImageJob(latent, f"from s{from_seed} to s{to_seed} f{i}") for i, latent in enumerate(latents)]
+    for job in jobs:
+        q.put(job)
+        jobQueue.inc(1)
+
+    imgs = [job.wait_for_img(30) for job in jobs]
+
+    for img in imgs:
+        if not img:
+            raise Exception("Generating image failed or timed out")
+
+    resized_imgs = [img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS) for img in imgs]
+
+    resized_imgs[0].save(name, save_all=True, append_images=resized_imgs[1:], duration=1000/fps, loop=0)
+
+@app.route('/api/gif/', methods=['GET'])
+def gif_generation():
+    os.makedirs("outputGifs", exist_ok=True)
+
+    fromHash = request.args.get('from_value')
+    fromSeedStr = request.args.get('from_seed')
+    from_seed = useHashOrSeed(fromHash, fromSeedStr)
+
+    toHash = request.args.get('to_value')
+    toSeedStr = request.args.get('to_seed')
+    to_seed = useHashOrSeed(toHash, toSeedStr)
+
+    image_dim = getRequestedImageDim(request)
+    num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
+    fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
+
+    name = os.path.join(os.getcwd(), "outputGifs",
+                        f"from s{from_seed} to s{to_seed} n{num_frames}f{fps}x{image_dim}.gif")
+    if not os.path.isfile(name):
+        generate_gif(from_seed, to_seed, num_frames, fps, image_dim, name)
+    else:
+        print(f"Gif file already exists: {name}")
+
+    return send_file(name, mimetype='image/gif')
+
+def generate_mp4(from_seed, to_seed, num_frames, fps, kbitrate, image_dim, name):
+    latent1 = fromSeed(from_seed)
+    latent2 = fromSeed(to_seed)
+
+    vals = [(math.sin(i) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
+    latents = [latent1 * i + latent2 * (1 - i) for i in vals]
+
+    jobs = [GenerateImageJob(latent, f"from s{from_seed} to s{to_seed} f{i}") for i, latent in enumerate(latents)]
+    for job in jobs:
+        q.put(job)
+        jobQueue.inc(1)
+
+    imgs = [job.wait_for_img(30) for job in jobs]
+
+    for img in imgs:
+        if not img:
+            raise Exception("Generating image failed or timed out")
+
+    framesdir = name + " - frames"
+    os.makedirs(framesdir, exist_ok=True)
+    for i, img in enumerate(imgs):
+        img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS).save(os.path.join(framesdir, f"img{i:03d}.jpg"), 'JPEG')
+
+    print(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
+    os.system(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
+
+
+@app.route('/api/mp4/', methods=['GET'])
+def mp4_generation():
+    os.makedirs("outputMp4s", exist_ok=True)
+
+    fromHash = request.args.get('from_value')
+    fromSeedStr = request.args.get('from_seed')
+    from_seed = useHashOrSeed(fromHash, fromSeedStr)
+
+    toHash = request.args.get('to_value')
+    toSeedStr = request.args.get('to_seed')
+    to_seed = useHashOrSeed(toHash, toSeedStr)
+
+    image_dim = getRequestedImageDim(request)
+    num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
+    fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
+    kbitrate = defaultedRequestInt(request, 'kbitrate', 2400, 100, 20000)
+
+    name = os.path.join(os.getcwd(), "outputMp4s",
+                        f"from s{from_seed} to s{to_seed} n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
+
+    if not os.path.isfile(name):
+        generate_mp4(from_seed, to_seed, num_frames, fps, kbitrate, image_dim, name)
+    else:
+        print(f"MP4 file already exists: {name}")
+
+    return send_file(name, mimetype='video/mp4')
+
 
 
 @app.route('/api/queue/', methods=['GET'])
@@ -258,6 +371,7 @@ def get_batch(batchsize):
 def worker():
     dnnlib.tflib.init_tf()
     Gs = fetch_model()
+    global dlatent_avg
     dlatent_avg = Gs.get_var('dlatent_avg')
 
     # Setup for the other bits of the program, hacky and vulnerable to race
@@ -270,13 +384,12 @@ def worker():
 
     while True:
         generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '20'))))
-        
-        seeds = [job.seed for job in generateImageJobs]
+
+        latents = np.array([job.latent for job in generateImageJobs])
 
         print(f"Running jobs {[str(job) for job in generateImageJobs]}")
-        latents = np.array([fromSeed(seed) for seed in seeds])
 
-        images = toImages(Gs, latents, None)
+        images = toImages(Gs, [toDLat(Gs, lat) for lat in latents], None)
         for img, job in zip(images, generateImageJobs):
             job.set_result(img)
             imagesGenCounter.inc()
