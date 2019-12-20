@@ -55,7 +55,7 @@ function addHoverFaceCheck(node) {
       </div>
     </div>
     `
-    div.querySelector("#checkfaceimg").src = "https://api.checkface.ml/api/face/?value=" + hashMessage + "&dim=200";
+    div.querySelector("#checkfaceimg").src = "https://api.checkface.ml/api/face/?value=" + hashMessage + "&dim=200&for=hoverlink";
     div.querySelector("#checkfacehash").innerHTML = hashMessage.substring(0, 7);
     node.appendChild(div);
   }
@@ -69,7 +69,6 @@ function observeAllLinks() {
   // Create observer instance.
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
-      console.log("got mutation", mutation);
       [].forEach.call(mutation.addedNodes, function(node) {
         if (node.nodeType === Node.ELEMENT_NODE) {
           if(node.matches("#cfToolTip") || node.matches("#FaceCheck")) {

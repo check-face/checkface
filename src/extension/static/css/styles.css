@@ -44,9 +44,12 @@
   max-width: 400px;
 }
 
+/* these !important properties are to fix problems
+due to css of certain host sites. */
+/* TODO: use a shadow root instead */
 .checkface > p {
   color: var(--text-color-normal) !important;
-  display: initial !important;
+  display: block !important;
 }
 
 .checkface > img {

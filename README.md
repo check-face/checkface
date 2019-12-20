@@ -1,5 +1,7 @@
 # Check Face
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/cfdfc39a457c4a68a1fce72b3f357a86)](https://app.codacy.com/app/cdilga/checkface?utm_source=github.com&utm_medium=referral&utm_content=check-face/checkface&utm_campaign=Badge_Grade_Dashboard)
+
  > Putting a face to a hash
 
 `Winner of Facebook Hack Melbourne 2019`
