@@ -84,10 +84,20 @@ Request images at [api.checkface.ml/api/face?value=example&dim=300](https://api.
 
 Prerequisites to run the backend server
 
-  - GPU with sufficient VRAM to hold the model
-  - Nvidia Docker runtime (only supported on Linux, until HyperV adds GPU passthrough support)
+  - Nvidia GPU with sufficient VRAM to hold the model (recommended atleast 6 GB)
+  - Nvidia drivers (eg. `sudo apt install nvidia-driver-435`)
+  - [Nvidia Docker runtime](https://github.com/NVIDIA/nvidia-docker) (only supported on Linux, until HyperV adds GPU passthrough support)
 
 For running a backend we have used an AWS p3 instance on ECS, or g3s.xlarge via docker-machine for testing.
+
+**Build and run docker image**
+```console
+cd ./src/server
+docker build -t checkfaceapi .
+docker run -d -p 8080:8080 -p 8000:8000 --gpus all --name checkfaceapi checkfaceapi
+```
+
+The api is available on port 8080 and prometheus metrics on port 8000.
 
 ### Project Webpage
 
@@ -125,13 +135,13 @@ Help needed to set up auto updating and registering in file context menu.
 
 ### Backend API
 
-We rely on Nvlabs StyleGAN to run our inference, using the default model. First ensure you have 
+We rely on Nvlabs StyleGAN to run our inference, using the default model.
+You can run it in docker to avoid all the dependencies, as shown above.
+Otherwise, first ensure you have
 
   - [cuDNN](https://developer.nvidia.com/cudnn) 7.3.1
   - [CUDA toolkit 9.0](https://developer.nvidia.com/cuda-90-download-archive)
   - NVIDIA driver 391.35
-
-Instructions for installing the 
 
 Best practice is to first create a virtualenv, followed by installing the requirements
 
