@@ -1,5 +1,5 @@
 FROM python:3.7-slim as download-model
-RUN pip install --no-cache-dir numpy requests
+RUN pip install --no-cache-dir numpy==1.16.3 requests==2.21.0
 COPY ./dnnlib /app/dnnlib
 COPY ./fetchModel.py /app/fetchModel.py
 WORKDIR /app
