@@ -1,23 +1,23 @@
 FROM python:3.7-slim as download-model
-RUN pip install --no-cache-dir numpy==1.16.3 requests==2.21.0
+RUN pip install --no-cache-dir numpy requests
 COPY ./dnnlib /app/dnnlib
 COPY ./fetchModel.py /app/fetchModel.py
 WORKDIR /app
-RUN python3.7 fetchModel.py
+RUN python fetchModel.py
 
-FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends software-properties-common
-RUN add-apt-repository ppa:deadsnakes/ppa
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends python3.7 wget python3-distutils ffmpeg
-RUN wget -O ~/get-pip.py https://bootstrap.pypa.io/get-pip.py
-RUN python3.7 ~/get-pip.py
+
+
+FROM tensorflow/tensorflow:1.15.0-gpu-py3
+
+RUN pip install scipy==1.3.3
+RUN pip install requests==2.22.0
+RUN pip install Pillow==6.2.1
+
+RUN apt update
+RUN apt install --no-install-recommends -y ffmpeg
 COPY ./requirements.txt /app/requirements.txt
-RUN pip install -r /app/requirements.txt
-COPY ./dnnlib /app/dnnlib
-COPY ./fetchModel.py /app/fetchModel.py
+RUN pip install --no-cache-dir -r /app/requirements.txt
 WORKDIR /app
+COPY --from=download-model /app/.stylegan2-cache /app/.stylegan2-cache
 COPY . /app
-COPY --from=download-model /app/cache /app/cache
-CMD ["python3.7", "checkface.py"]
+CMD ["python", "checkface.py"]

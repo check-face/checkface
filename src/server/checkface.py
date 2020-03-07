@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
 import flask
-from encoder.perceptual_model import PerceptualModel
-from encoder.generator_model import Generator
 import threading
 import subprocess
 import shutil
 import base64
 import math
-import config
 import dnnlib.tflib as tflib
 import dnnlib
 import time
@@ -21,7 +18,7 @@ import pickle
 import numpy as np
 import queue
 import hashlib
-from flask import send_file, request, jsonify
+from flask import send_file, request, jsonify, render_template
 from prometheus_client import start_http_server, Summary, Gauge, Counter
 np.set_printoptions(threshold=np.inf)
 
@@ -31,14 +28,13 @@ sys.path.append('/app/dnnlib')
 
 
 def fetch_model():
-    url = 'https://drive.google.com/uc?id=1-O8VHNOpBNHnQyn0yz_pK3PHoc3CboC3'
-
-    with dnnlib.util.open_url(url, cache_dir='cache') as f:
-        _G, _D, Gs = pickle.load(f)
-        return Gs
-
+    network_pkl = 'gdrive:networks/stylegan2-ffhq-config-f.pkl'
+    import pretrained_networks
+    _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    return Gs
+num_gpus = int(os.getenv('NUM_GPUS', '1'))
 synthesis_kwargs = dict(output_transform=dict(
-    func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=20)
+    func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=20, num_gpus=num_gpus)
 
 # We need to have access to this dimension to generate qlatents and we don't
 # want to have to access the massive Gs object outside of the worker thread,
@@ -350,6 +346,19 @@ def mp4_generation():
     else:
         print(f"MP4 file already exists: {name}")
 
+
+    embed_html = request.args.get('embed_html')
+    if(embed_html):
+        embed_html = embed_html.lower()
+    if embed_html == 'true':
+        srcData = "data:video/mp4;base64,"
+        with open(name, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read())
+            srcData = srcData + encoded_string.decode('utf-8')
+        return render_template('mp4.html', title="Rendered mp4", dim=str(image_dim), src=srcData)
+
+
+
     return send_file(name, mimetype='video/mp4')
 
 
@@ -378,12 +387,12 @@ def worker():
     # conditions and might have old data
     GsInputDim = Gs.input_shape[1]
 
-    print("Warming up generator network")
+    print(f"Warming up generator network with {num_gpus} gpus")
     warmupNetwork = toImages(Gs, np.array([fromSeed(5)]), None)
     print("Generator ready")
 
     while True:
-        generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '20'))))
+        generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '10'))))
 
         latents = np.array([job.latent for job in generateImageJobs])
 

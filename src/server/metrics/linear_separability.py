@@ -1,9 +1,8 @@
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2019, NVIDIA Corporation. All rights reserved.
 #
-# This work is licensed under the Creative Commons Attribution-NonCommercial
-# 4.0 International License. To view a copy of this license, visit
-# http://creativecommons.org/licenses/by-nc/4.0/ or send a letter to
-# Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+# This work is made available under the Nvidia Source Code License-NC.
+# To view a copy of this license, visit
+# https://nvlabs.github.io/stylegan2/license.html
 
 """Linear Separability (LS)."""
 
@@ -110,7 +109,7 @@ class LS(metric_base.MetricBase):
         self.attrib_indices = attrib_indices
         self.minibatch_per_gpu = minibatch_per_gpu
 
-    def _evaluate(self, Gs, num_gpus):
+    def _evaluate(self, Gs, Gs_kwargs, num_gpus):
         minibatch_size = num_gpus * self.minibatch_per_gpu
 
         # Construct TensorFlow graph for each GPU.
@@ -121,8 +120,9 @@ class LS(metric_base.MetricBase):
 
                 # Generate images.
                 latents = tf.random_normal([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
-                dlatents = Gs_clone.components.mapping.get_output_for(latents, None, is_validation=True)
-                images = Gs_clone.components.synthesis.get_output_for(dlatents, is_validation=True, randomize_noise=True)
+                labels = self._get_random_labels_tf(self.minibatch_per_gpu)
+                dlatents = Gs_clone.components.mapping.get_output_for(latents, labels, **Gs_kwargs)
+                images = Gs_clone.get_output_for(latents, None, **Gs_kwargs)
 
                 # Downsample to 256x256. The attribute classifiers were built for 256x256.
                 if images.shape[2] > 256:
@@ -141,7 +141,8 @@ class LS(metric_base.MetricBase):
 
         # Sampling loop.
         results = []
-        for _ in range(0, self.num_samples, minibatch_size):
+        for begin in range(0, self.num_samples, minibatch_size):
+            self._report_progress(begin, self.num_samples)
             results += tflib.run(result_expr)
         results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
 

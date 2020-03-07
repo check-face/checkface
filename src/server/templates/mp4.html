@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{{title}}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #202020;
+            }
+        }
+    </style>
+</head>
+<body>
+    <video width="{{dim}}" height="{{dim}}" controls loop autoplay muted>
+        <source type="video/mp4" src="{{src}}">
+    </video>
+</body>
+</html>

@@ -1,9 +1,8 @@
-﻿# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2019, NVIDIA Corporation. All rights reserved.
 #
-# This work is licensed under the Creative Commons Attribution-NonCommercial
-# 4.0 International License. To view a copy of this license, visit
-# http://creativecommons.org/licenses/by-nc/4.0/ or send a letter to
-# Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+# This work is made available under the Nvidia Source Code License-NC.
+# To view a copy of this license, visit
+# https://nvlabs.github.io/stylegan2/license.html
 
 """Helper for managing networks."""
 
@@ -147,7 +146,7 @@ class Network:
         build_kwargs["components"] = self.components
 
         # Build template graph.
-        with tfutil.absolute_variable_scope(self.scope, reuse=tf.AUTO_REUSE), tfutil.absolute_name_scope(self.scope):  # ignore surrounding scopes
+        with tfutil.absolute_variable_scope(self.scope, reuse=False), tfutil.absolute_name_scope(self.scope):  # ignore surrounding scopes
             assert tf.get_variable_scope().name == self.scope
             assert tf.get_default_graph().get_name_scope() == self.scope
             with tf.control_dependencies(None):  # ignore surrounding control dependencies
@@ -172,8 +171,8 @@ class Network:
             raise ValueError("Components of a Network must have unique names.")
 
         # List inputs and outputs.
-        self.input_shapes = [tfutil.shape_to_list(t.shape) for t in self.input_templates]
-        self.output_shapes = [tfutil.shape_to_list(t.shape) for t in self.output_templates]
+        self.input_shapes = [t.shape.as_list() for t in self.input_templates]
+        self.output_shapes = [t.shape.as_list() for t in self.output_templates]
         self.input_shape = self.input_shapes[0]
         self.output_shape = self.output_shapes[0]
         self.output_names = [t.name.split("/")[-1].split(":")[0] for t in self.output_templates]
@@ -256,7 +255,7 @@ class Network:
     def __getstate__(self) -> dict:
         """Pickle export."""
         state = dict()
-        state["version"]            = 3
+        state["version"]            = 4
         state["name"]               = self.name
         state["static_kwargs"]      = dict(self.static_kwargs)
         state["components"]         = dict(self.components)
@@ -276,7 +275,7 @@ class Network:
             state = handler(state)
 
         # Set basic fields.
-        assert state["version"] in [2, 3]
+        assert state["version"] in [2, 3, 4]
         self.name = state["name"]
         self.static_kwargs = util.EasyDict(state["static_kwargs"])
         self.components = util.EasyDict(state.get("components", {}))
@@ -360,7 +359,6 @@ class Network:
             minibatch_size: int = None,
             num_gpus: int = 1,
             assume_frozen: bool = False,
-            custom_inputs=None,
             **dynamic_kwargs) -> Union[np.ndarray, Tuple[np.ndarray, ...], List[np.ndarray]]:
         """Run this network for the given NumPy array(s), and return the output(s) as NumPy array(s).
 
@@ -377,7 +375,6 @@ class Network:
             num_gpus:           Number of GPUs to use.
             assume_frozen:      Improve multi-GPU performance by assuming that the trainable parameters will remain changed between calls.
             dynamic_kwargs:     Additional keyword arguments to be passed into the network build function.
-            custom_inputs:      Allow to use another Tensor as input instead of default Placeholders
         """
         assert len(in_arrays) == self.num_inputs
         assert not all(arr is None for arr in in_arrays)
@@ -401,14 +398,9 @@ class Network:
         # Build graph.
         if key not in self._run_cache:
             with tfutil.absolute_name_scope(self.scope + "/_Run"), tf.control_dependencies(None):
-                if custom_inputs is not None:
-                    with tf.device("/gpu:0"):
-                        in_expr = [input_builder(name) for input_builder, name in zip(custom_inputs, self.input_names)]
-                        in_split = list(zip(*[tf.split(x, num_gpus) for x in in_expr]))
-                else:
-                    with tf.device("/cpu:0"):
-                        in_expr = [tf.placeholder(tf.float32, name=name) for name in self.input_names]
-                        in_split = list(zip(*[tf.split(x, num_gpus) for x in in_expr]))
+                with tf.device("/cpu:0"):
+                    in_expr = [tf.placeholder(tf.float32, name=name) for name in self.input_names]
+                    in_split = list(zip(*[tf.split(x, num_gpus) for x in in_expr]))
 
                 out_split = []
                 for gpu in range(num_gpus):
@@ -438,7 +430,7 @@ class Network:
 
         # Run minibatches.
         in_expr, out_expr = self._run_cache[key]
-        out_arrays = [np.empty([num_items] + tfutil.shape_to_list(expr.shape)[1:], expr.dtype.name) for expr in out_expr]
+        out_arrays = [np.empty([num_items] + expr.shape.as_list()[1:], expr.dtype.name) for expr in out_expr]
 
         for mb_begin in range(0, num_items, minibatch_size):
             if print_progress:
@@ -492,7 +484,7 @@ class Network:
                 cur_ops = [op for op in cur_ops if not op.name.startswith(var_prefix)]
 
             # Scope does not contain ops as immediate children => recurse deeper.
-            contains_direct_ops = any("/" not in op.name[len(global_prefix):] and op.type != "Identity" for op in cur_ops)
+            contains_direct_ops = any("/" not in op.name[len(global_prefix):] and op.type not in ["Identity", "Cast", "Transpose"] for op in cur_ops)
             if (level == 0 or not contains_direct_ops) and (len(cur_ops) + len(cur_vars)) > 1:
                 visited = set()
                 for rel_name in [op.name[len(global_prefix):] for op in cur_ops] + [name[len(local_prefix):] for name, _var in cur_vars]:
@@ -518,7 +510,7 @@ class Network:
         total_params = 0
 
         for layer_name, layer_output, layer_trainables in self.list_layers():
-            num_params = sum(np.prod(tfutil.shape_to_list(var.shape)) for var in layer_trainables)
+            num_params = sum(int(np.prod(var.shape.as_list())) for var in layer_trainables)
             weights = [var for var in layer_trainables if var.name.endswith("/weight:0")]
             weights.sort(key=lambda x: len(x.name))
             if len(weights) == 0 and len(layer_trainables) == 1:
