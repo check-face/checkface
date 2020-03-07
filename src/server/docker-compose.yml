@@ -1,0 +1,20 @@
+version: '3'
+services:
+
+  api:
+    build: .
+    depends_on:
+      - db
+    stdin_open: true
+    tty: true
+    ports:
+     - "8080:8080"
+     - "8000:8000"
+
+  db:
+    image: mongo:4.2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes: 
+      - ./dbdata:/data/db

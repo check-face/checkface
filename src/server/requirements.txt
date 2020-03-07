@@ -13,6 +13,7 @@ prometheus-client==0.7.1
 pycparser==2.19
 pyOpenSSL==19.0.0
 PyYAML==5.1
+pymongo==3.10.1
 
 absl-py==0.8.1
 asn1crypto==0.24.0

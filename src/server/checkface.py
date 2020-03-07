@@ -20,7 +20,11 @@ import queue
 import hashlib
 from flask import send_file, request, jsonify, render_template
 from prometheus_client import start_http_server, Summary, Gauge, Counter
+import pymongo
+import uuid
 np.set_printoptions(threshold=np.inf)
+client = pymongo.MongoClient("mongodb://root:example@db")
+db = client.test
 
 
 sys.path.append('/app/dnnlib')
@@ -165,6 +169,22 @@ def status():
 def home():
     return 'It works'
 
+@app.route('/api/registerlatent/', methods=['POST'])
+def registerLatent():
+    data = request.json
+    try:
+        latent_data = np.array(data['latent']).astype('float32', casting='same_kind')
+    except TypeError:
+        return flask.Response('Latent must be array of floats', status=400)
+    if latent_data.shape == (512,):
+        latent_type = 'dlatent'
+    elif latent_data.shape == (18, 512):
+        latent_type = 'qlatent'
+    else:
+        return flask.Response('Latent must be array of shape (512,) or (18, 512)', status=400)
+    guid = uuid.uuid4()
+    db.latents.insert_one({'_id':str(guid), 'type': latent_type, 'latent':latent_data.tolist()})
+    return str(guid)
 
 # such a queue
 q = queue.Queue()
