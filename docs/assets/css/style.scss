@@ -3,9 +3,27 @@
 
 $section-headings-color: #000000;
 @import "{{ site.theme }}";
+
+#skip-to-content {
+    height: 1px;
+    width: 1px;
+    position: absolute;
+    overflow: hidden;
+    top: -10px;
+
+    &:focus {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        height: auto;
+        width: auto;
+        background: invert($body-link-color);
+        outline: thick solid invert($body-link-color);
+    }
+}
+
 .page-header {
     overflow: hidden;
-    position: relative;
     background: -webkit-linear-gradient(117deg, rgb(96, 87, 246), rgb(216, 71, 99));
     background: linear-gradient(117deg, rgb(96, 87, 246), rgb(216, 71, 99));
     background: -webkit-radial-gradient(rgb(194, 74, 126), rgb(105, 86, 235));
