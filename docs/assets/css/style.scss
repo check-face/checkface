@@ -19,16 +19,32 @@ $section-headings-color: #000000;
         width: auto;
         background: invert($body-link-color);
         outline: thick solid invert($body-link-color);
+        z-index: 1;
     }
 }
 
 .page-header {
+    position: relative;
     overflow: hidden;
     background: -webkit-linear-gradient(117deg, rgb(96, 87, 246), rgb(216, 71, 99));
     background: linear-gradient(117deg, rgb(96, 87, 246), rgb(216, 71, 99));
     background: -webkit-radial-gradient(rgb(194, 74, 126), rgb(105, 86, 235));
     background: radial-gradient(rgb(194, 74, 126), rgb(105, 86, 235));
     color: white;
+    &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: -300px;
+
+        max-width: 1280px;
+        // height: 100%;
+        vertical-align: middle;
+        background-image: url("/assets/images/strips.png");
+        // background-color: green;
+    }
 }
 
 :target::before {
