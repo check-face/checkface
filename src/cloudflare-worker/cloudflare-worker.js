@@ -86,7 +86,7 @@ addEventListener('fetch', event => {
     if(!value) {
       value = ""
     }
-    if(url.pathname == "/" || url.pathname == "/index.html") {
+    if(value.length > 0 && (url.pathname == "/" || url.pathname == "/index.html")) {
       console.log(`transforming meta tags of ${url} for value=${value}`)
       res = new HTMLRewriter()
         .on("meta", new MetaTagElementHandler(value))
