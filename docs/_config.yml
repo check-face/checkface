@@ -1,0 +1,9 @@
+repository: check-face/checkface
+theme: jekyll-theme-cayman
+plugins:
+    - jekyll-github-metadata
+    - jekyll-mentions
+    - jekyll-redirect-from
+    - jekyll-sitemap
+    - jemoji
+    - github-pages

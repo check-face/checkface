@@ -5,3 +5,5 @@ outputImages/
 \.ionide/
 
 cache/
+
+.sass-cache
