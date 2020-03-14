@@ -1,5 +1,6 @@
 repository: check-face/checkface
 theme: jekyll-theme-cayman
+title: Checkface
 plugins:
     - jekyll-github-metadata
     - jekyll-mentions
