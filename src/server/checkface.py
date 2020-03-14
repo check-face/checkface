@@ -206,9 +206,8 @@ def defaultedRequestInt(request, param_name, default_val, min_val, max_val):
 def getRequestedImageDim(request):
     return defaultedRequestInt(request, 'dim', default_image_dim, 10, 1024)
 
-def handle_generate_image_request(seed):
+def handle_generate_image_request(seed, image_dim):
     os.makedirs("outputImages", exist_ok=True)
-    image_dim = getRequestedImageDim(request)
 
     name = os.path.join(os.getcwd(), "outputImages",
                         f"s{seed}_{image_dim}.jpg")
@@ -258,7 +257,8 @@ def getRequestSeed(request):
 def image_generation():
     with requestTimeSummary.time():
         seed = getRequestSeed(request)
-        return handle_generate_image_request(seed)
+        image_dim = getRequestedImageDim(request)
+        return handle_generate_image_request(seed, image_dim)
 
 
 @app.route('/api/hashdata/', methods=['GET'])
