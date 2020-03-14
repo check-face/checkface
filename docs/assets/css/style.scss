@@ -13,3 +13,25 @@ $section-headings-color: #000000;
     color: white;
 }
 
+:target::before {
+    content: '# ';
+    font-weight: bold;
+    color: rgba(95, 87, 246, 0.63);
+    position: absolute;
+    margin-left: -20px;
+}
+
+
+.main-content {
+    h2 {
+        margin-left: 1rem;
+    }
+
+    h3 {
+        margin-left: 2rem;
+    }
+
+    h4, h5, h6, p, ul, ol {
+        margin-left: 3rem;
+    }
+}

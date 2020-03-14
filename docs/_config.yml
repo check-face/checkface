@@ -7,3 +7,5 @@ plugins:
     - jekyll-sitemap
     - jemoji
     - github-pages
+
+markdown: kramdown
