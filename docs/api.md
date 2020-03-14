@@ -7,7 +7,7 @@ layout: default
     <div class="text">
         <p>Checkface for this page</p>
     </div>
-    <div class="img" >
+    <div class="img">
         <img id="version_id" alt="CheckFace based on hash for this page"/>
     </div>
 </div>
@@ -16,7 +16,9 @@ layout: default
 
 # Using the CheckFace API
 
-You're in luck that it's not authenticated, entirely open API
+The API is available at `https://api.checkface.ml/`
+
+You're in luck that it's not authenticated; it's an entirely open API!
 
 The API is in Alpha is is likely to go down, have maintenance at unpredictable times and make breaking changes to the API.
 
