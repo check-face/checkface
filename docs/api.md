@@ -2,6 +2,18 @@
 title: API Docs
 layout: default
 ---
+
+<div class="checkface-version-badge">
+    <div class="text">
+        <p>Checkface for this page</p>
+    </div>
+    <div class="img" >
+        <img id="version_id" alt="CheckFace based on hash for this page"/>
+    </div>
+</div>
+--------
+
+
 # Using the CheckFace API
 
 You're in luck that it's not authenticated, entirely open API
@@ -270,3 +282,14 @@ curl --location --request POST 'https://api.checkface.ml/api/registerlatent/' \
 
 POST an image to this endpoint to recover latent for later use.
 It returns a guid which can be used later in guid parameters.
+
+<script>
+(async function() {
+    let resp = await fetch(window.location.href)
+    const digest = await crypto.subtle.digest("SHA-256", await resp.arrayBuffer());
+    const hashArray = Array.from(new Uint8Array(digest));                     // convert buffer to byte array
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+    console.log(hashHex)
+    document.getElementById("version_id").src = `https://api.checkface.ml/api/face/?value=${hashHex}&dim=50`
+})();
+</script>

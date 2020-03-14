@@ -35,3 +35,38 @@ $section-headings-color: #000000;
         margin-left: 3rem;
     }
 }
+
+.checkface-version-badge {
+    border: purple;
+    border-style: solid;
+    width: fit-content;
+    border-radius: 17px;
+    border-width: 1px;
+    display: grid;
+    background-color: #EEE;
+    vertical-align: middle;
+    grid-template-columns: 1fr auto;
+    overflow: hidden;
+
+    .text {
+        display: flex;
+        margin: 0;
+        padding: 0 0.5em;
+
+        p {
+            margin: auto;
+            font-size: 1em;
+        }
+    }
+
+    .img {
+        display: flex;
+        margin: auto;
+        padding: 3px;
+        background-color: #6f5bf97d;
+
+        img {
+            border-radius: 50%;
+        }
+    }
+}
