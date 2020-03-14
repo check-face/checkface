@@ -41,7 +41,7 @@ Use either `value`, `seed` or `guid` parameters to specify the face
 
 `seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
 
 ### Returns
 
