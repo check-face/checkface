@@ -31,19 +31,14 @@ $section-headings-color: #000000;
     background: -webkit-radial-gradient(rgb(194, 74, 126), rgb(105, 86, 235));
     background: radial-gradient(rgb(194, 74, 126), rgb(105, 86, 235));
     color: white;
-    &::before {
-        content: '';
+    
+    .strips {
         position: absolute;
         left: 0;
         right: 0;
-        bottom: 0;
-        top: -300px;
-
+        bottom: -100px;
         max-width: 1280px;
-        // height: 100%;
-        vertical-align: middle;
-        background-image: url("/assets/images/strips.png");
-        // background-color: green;
+        height: 200%;
     }
 }
 
