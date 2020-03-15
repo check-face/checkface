@@ -3,13 +3,15 @@ title: API Docs
 layout: default
 ---
 
-<div class="checkface-version-badge">
-    <div class="text">
-        <p>Checkface for this page</p>
-    </div>
-    <div class="img">
-        <img id="version_id" alt="CheckFace based on hash for this page"/>
-    </div>
+<div>
+    <a class="checkface-version-badge" id="page-version-checkface-link">
+        <div class="text">
+            <p>Checkface for this page</p>
+        </div>
+        <div class="img">
+            <img id="page-version-checkface-img" alt="CheckFace based on hash for this page"/>
+        </div>
+    </a>
 </div>
 --------
 
@@ -290,8 +292,11 @@ It returns a guid which can be used later in guid parameters.
     let resp = await fetch(window.location.href)
     const digest = await crypto.subtle.digest("SHA-256", await resp.arrayBuffer());
     const hashArray = Array.from(new Uint8Array(digest));                     // convert buffer to byte array
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
-    console.log(hashHex)
-    document.getElementById("version_id").src = `https://api.checkface.ml/api/face/?value=${hashHex}&dim=50`
+    const hashB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(hashArray))); //encode bytes as base64
+    let pageVersion = encodeURIComponent(hashB64.substr(0, 10));
+    let imgSrc = `https://api.checkface.ml/api/face/?value=${pageVersion}&dim=50`
+    let linkHref = `/?value=${pageVersion}`
+    document.getElementById("page-version-checkface-img").src = imgSrc;
+    document.getElementById("page-version-checkface-link").href = linkHref;
 })();
 </script>
