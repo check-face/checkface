@@ -84,6 +84,8 @@ Build and run from source only at the moment.
 
 Request images at [api.checkface.ml/api/face?value=example&dim=300](https://api.checkface.ml/api/face?value=example&dim=300).
 
+Documentation for endpoints available on api is available at https://checkface.ml/api
+
 Prerequisites to run the backend server
 
   - Nvidia GPU with sufficient VRAM to hold the model (recommended atleast 6 GB)
