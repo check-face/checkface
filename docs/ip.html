@@ -1,0 +1,22 @@
+---
+title: Checkface for you IP
+layout: default
+description: Putting a face to an ip
+---
+
+<h1><span class="light" id="desc">Loading...</span><span id="ip"></span></h1>
+<img id="ipimg" alt="checkface based on your ip" class="dispnone" />
+<p>Using <a href="https://www.ipify.org/">ipify.org</a> to get your public ip</p>
+
+<script>
+(async () => {
+    let ip = await fetch("https://api.ipify.org?format=json")
+        .then(r => r.json())
+        .then(j => j.ip)
+    let imgSrc = `https://api.checkface.ml/api/face/?value=${encodeURIComponent(ip)}&dim=400`
+    document.getElementById("desc").innerText = "Your IP Address is: "
+    document.getElementById("ip").innerText = ip;
+    document.getElementById("ipimg").src = imgSrc;        
+    document.getElementById("ipimg").classList.remove("dispnone")
+})();
+</script>

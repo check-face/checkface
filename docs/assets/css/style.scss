@@ -40,6 +40,13 @@ $section-headings-color: #000000;
         max-width: 1280px;
         height: 200%;
     }
+
+    .project-buttons {
+        display: grid;
+        // grid-auto-flow: row;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        // grid-template-columns: 1fr;
+    }
 }
 
 :target::before {
@@ -62,6 +69,14 @@ $section-headings-color: #000000;
 
     h4, h5, h6, p, ul, ol {
         margin-left: 3rem;
+    }
+
+    .light {
+        opacity: 0.6;
+    }
+
+    .dispnone {
+        display: none;
     }
 }
 
