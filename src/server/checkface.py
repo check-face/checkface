@@ -158,6 +158,7 @@ generatorNetworkTime = Summary('generator_network_seconds', 'Time taken to run \
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MiB
 
 
 @app.route('/status/', methods=['GET'])
@@ -381,6 +382,38 @@ def mp4_generation():
 
     return send_file(name, mimetype='video/mp4')
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+def getextension(filename):
+    return filename.rsplit('.', 1)[1].lower()
+def allowed_file(filename):
+    return '.' in filename and \
+           getextension(filename) in ALLOWED_EXTENSIONS
+
+@app.route('/api/uploadimage/', methods=['POST'])
+def uploadimage():
+    file = request.files['usrimg']
+    if not file:
+        return flask.Response('No file uploaded for usrimg', status=400)
+    elif not allowed_file(file.filename):
+        return flask.Response(f'File extension must be in {ALLOWED_EXTENSIONS}', status=400)
+    else:
+        guid = uuid.uuid4()
+        basename = f"{str(guid)}.{getextension(file.filename)}"
+        filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", basename)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        file.save(filename)
+        try:
+            db.uploadedImages.insert_one({'_id':str(guid), 'type': "rawupload", 'filename': basename})
+        except pymongo.errors.PyMongoError:
+            return flask.Response('Database error', status=500)
+        return str(guid)
+
+@app.route('/api/uploadimage/', methods=['GET'])
+def getmyface():
+    imgguid = request.args.get('imgguid')
+    record = db.uploadedImages.find_one({'_id': imgguid})
+    filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", record["filename"])
+    return send_file(filename)
 
 
 @app.route('/api/queue/', methods=['GET'])

@@ -3,4 +3,6 @@ results
 **/_cudacache
 .stylegan2-cache
 dbdata
+checkfacedata
+docker-compose.override.yml
 venv/
