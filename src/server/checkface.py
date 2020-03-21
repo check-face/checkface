@@ -44,7 +44,7 @@ synthesis_kwargs = dict(output_transform=dict(
 # want to have to access the massive Gs object outside of the worker thread,
 # thus we update here when we can.
 
-GsInputDim = 512
+GsInputDim = 512 # updated in worker
 
 
 def fromSeed(seed, dim=0, dimOffset=0):
@@ -438,6 +438,7 @@ def worker():
 
     # Setup for the other bits of the program, hacky and vulnerable to race
     # conditions and might have old data
+    global GsInputDim
     GsInputDim = Gs.input_shape[1]
 
     print(f"Warming up generator network with {num_gpus} gpus")
