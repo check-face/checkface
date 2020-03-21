@@ -259,10 +259,10 @@ def getRequestedImageDim(request):
     return defaultedRequestInt(request, 'dim', default_image_dim, 10, 1024)
 
 def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
-    os.makedirs("outputImages", exist_ok=True)
-
-    name = os.path.join(os.getcwd(), "outputImages",
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputImages",
                         f"{latentProxy.getName()}_{image_dim}.jpg")
+    os.makedirs(os.path.dirname(name), exist_ok=True)
+
     if not os.path.isfile(name):
         job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
         q.put(job)
@@ -354,7 +354,6 @@ def generate_gif(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_f
 
 @app.route('/api/gif/', methods=['GET'])
 def gif_generation():
-    os.makedirs("outputGifs", exist_ok=True)
 
     fromHash = request.args.get('from_value')
     fromSeedStr = request.args.get('from_seed')
@@ -370,8 +369,11 @@ def gif_generation():
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
 
-    name = os.path.join(os.getcwd(), "outputGifs",
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputGifs",
                         f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}.gif")
+    os.makedirs(os.path.dirname(name), exist_ok=True)
+    
+
     if not os.path.isfile(name):
         generate_gif(fromLatentProxy, toLatentProxy, num_frames, fps, image_dim, name)
     else:
@@ -408,7 +410,6 @@ def generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, imag
 
 @app.route('/api/mp4/', methods=['GET'])
 def mp4_generation():
-    os.makedirs("outputMp4s", exist_ok=True)
 
     fromHash = request.args.get('from_value')
     fromSeedStr = request.args.get('from_seed')
@@ -425,8 +426,10 @@ def mp4_generation():
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
     kbitrate = defaultedRequestInt(request, 'kbitrate', 2400, 100, 20000)
 
-    name = os.path.join(os.getcwd(), "outputMp4s",
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputMp4s",
                         f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
+    os.makedirs(os.path.dirname(name), exist_ok=True)
+    
 
     if not os.path.isfile(name):
         generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, image_dim, name)
