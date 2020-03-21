@@ -43,7 +43,7 @@ Use either `value`, `seed` or `guid` parameters to specify the face
 
 `seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
+`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent/](#post-apiregisterlatent)
 
 ### Returns
 
@@ -64,7 +64,7 @@ Use either `value`, `seed` or `guid` parameters to specify the latent
 
 `seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent/](#post-apiregisterlatent)
 
 ### Returns
 
@@ -100,7 +100,7 @@ You can mix and match values, seeds and guids.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent/](#post-apiregisterlatent)
 
 ### Returns
 
@@ -132,7 +132,7 @@ This is useful when trying out the api in a browser manually.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent/](#post-apiregisterlatent)
 
 `embed_html` *optional* **boolean** determines whether the response is embedded in an HTML document and loops
 
@@ -282,10 +282,37 @@ curl --location --request POST 'https://api.checkface.ml/api/registerlatent/' \
 </div>
 </details>
 
-## POST /api/recoverlatent/
+## POST /api/uploadimage/
 
-POST an image to this endpoint to recover latent for later use.
-It returns a guid which can be used later in guid parameters.
+POST an image to this endpoint the you intend to project back to a latent.
+
+It returns a guid which can be used later in `imgguid` parameters.
+
+### Body
+
+Upload an image file (.jpg or .png) for key `usrimg`.
+
+### Response 
+
+Plaintext guid referencing the image
+
+### Example
+
+```bash
+curl -F 'usrimg=@example.jpg' https://api.checkface.ml/api/uploadimage/
+```
+
+## GET /api/uploadimage/
+
+To check that an image uploaded, you can GET it on this endpoint using the imgguid returned by the POST.
+
+### Query Parameters
+
+`imgguid` **guid** globally unique identifier returned when posting an image to [/api/uploadimage/](#post-apiuploadimage)
+
+### Returns
+
+An image
 
 <script>
 (async function() {
