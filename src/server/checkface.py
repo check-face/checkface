@@ -318,7 +318,7 @@ def generate_mp4(from_seed, to_seed, num_frames, fps, kbitrate, image_dim, name)
     latent1 = fromSeed(from_seed)
     latent2 = fromSeed(to_seed)
 
-    vals = [(math.sin(i) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
+    vals = [(math.sin(i + math.pi/2) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
     latents = [latent1 * i + latent2 * (1 - i) for i in vals]
 
     jobs = [GenerateImageJob(latent, f"from s{from_seed} to s{to_seed} f{i}") for i, latent in enumerate(latents)]
