@@ -1,5 +1,40 @@
-## StyleGAN2 &mdash; Official TensorFlow Implementation
+## StyleGAN2 &mdash; Encoder/Projector for Official TensorFlow Implementation
+![Python 3.6](https://img.shields.io/badge/python-3.6-green.svg?style=plastic)
+![TensorFlow 1.10](https://img.shields.io/badge/tensorflow-1.10-green.svg?style=plastic)
+![cuDNN 7.3.1](https://img.shields.io/badge/cudnn-7.3.1-green.svg?style=plastic)
+![License CC BY-NC](https://img.shields.io/badge/license-CC_BY--NC-green.svg?style=plastic)
 
+This is a port of [Puzer/stylegan-encoder](https://github.com/Puzer/stylegan-encoder) for [NVlabs/stylegan2](https://github.com/NVlabs/stylegan2), plus a modified StyleGAN2 projector.
+
+![Teaser image](./docs/stylegan2encoder-teaser-1024x256.png)
+
+### Generating latent representation of your images, using the original encoder
+`pip install tensorflow-gpu==1.14`
+
+`git clone https://github.com/rolux/stylegan2encoder.git`
+
+`cd stylegan2encoder`
+
+You can generate latent representations of your own images using two scripts:
+
+1) Extract and align faces from images
+
+`python align_images.py raw_images/ aligned_images/`
+
+2) Find latent representation of aligned images
+
+`python encode_images.py aligned_images/ generated_images/ latent_representations/`
+
+### Generating latent representation of your images, using the modified projector
+Replace step 2 with:
+
+`python project_images.py aligned_images/ generated_images/`
+
+This is usually preferable. It also allows you to render a video of the optimization process. To see all available options, type:
+
+`python project_images.py -h`
+ 
+## Original Readme
 ![Teaser image](./docs/stylegan2-teaser-1024x256.png)
 
 **Analyzing and Improving the Image Quality of StyleGAN**<br>
@@ -23,11 +58,11 @@ For press and other inquiries, please contact Hector Marinez at [hmarinez@nvidia
 | &boxv;&nbsp; &boxur;&nbsp;  [100k-generated-images](https://drive.google.com/open?id=1BA2OZ1GshdfFZGYZPob5QWOGBuJCdu5q) | Random images with and without truncation
 | &boxvr;&nbsp; [videos](https://drive.google.com/open?id=1yXDV96SFXoUiZKU7AyE6DyKgDpIk4wUZ) | Individual clips of the video as high-quality MP4
 | &boxur;&nbsp; [networks](https://drive.google.com/open?id=1yanUI9m4b4PWzR0eurKNq6JR1Bbfbh6L) | Pre-trained networks
-| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-ffhq-config-f.pkl](https://drive.google.com/open?id=1Mgh-jglZjgksupF0XLl0KzuOqd1LXcoE) | StyleGAN2 for <span style="font-variant:small-caps">FFHQ</span> dataset at 1024&times;1024
-| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-car-config-f.pkl](https://drive.google.com/open?id=1MutzVf8XjNo6TUg03a6CUU_2Vlc0ltbV) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Car</span> dataset at 512&times;384
-| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-cat-config-f.pkl](https://drive.google.com/open?id=1MyowTZGvMDJCWuT7Yg2e_GnTLIzcSPCy) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Cat</span> dataset at 256&times;256
-| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-church-config-f.pkl](https://drive.google.com/open?id=1N3iaujGpwa6vmKCqRSHcD6GZ2HVV8h1f) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Church</span> dataset at 256&times;256
-| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-horse-config-f.pkl](https://drive.google.com/open?id=1N55ZtBhEyEbDn6uKBjCNAew1phD5ZAh-) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Horse</span> dataset at 256&times;256
+| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-ffhq-config-f.pkl](http://d36zk2xti64re0.cloudfront.net/stylegan2/networks/stylegan2-ffhq-config-f.pkl) | StyleGAN2 for <span style="font-variant:small-caps">FFHQ</span> dataset at 1024&times;1024
+| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-car-config-f.pkl](http://d36zk2xti64re0.cloudfront.net/stylegan2/networks/stylegan2-car-config-f.pkl) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Car</span> dataset at 512&times;384
+| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-cat-config-f.pkl](http://d36zk2xti64re0.cloudfront.net/stylegan2/networks/stylegan2-cat-config-f.pkl) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Cat</span> dataset at 256&times;256
+| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-church-config-f.pkl](http://d36zk2xti64re0.cloudfront.net/stylegan2/networks/stylegan2-church-config-f.pkl) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Church</span> dataset at 256&times;256
+| &ensp;&ensp; &boxvr;&nbsp;  [stylegan2-horse-config-f.pkl](http://d36zk2xti64re0.cloudfront.net/stylegan2/networks/stylegan2-horse-config-f.pkl) | StyleGAN2 for <span style="font-variant:small-caps">LSUN Horse</span> dataset at 256&times;256
 | &ensp;&ensp; &boxur;&nbsp;&#x22ef;  | Other training configurations used in the paper
 
 ## Requirements
@@ -48,6 +83,32 @@ nvcc test_nvcc.cu -o test_nvcc -run
 ```
 
 On Windows, the compilation requires Microsoft Visual Studio to be in `PATH`. We recommend installing [Visual Studio Community Edition](https://visualstudio.microsoft.com/vs/) and adding into `PATH` using `"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"`.
+
+## Using pre-trained networks
+
+Pre-trained networks are stored as `*.pkl` files on the [StyleGAN2 Google Drive folder](https://drive.google.com/open?id=1QHc-yF5C3DChRwSdZKcx1w6K8JvSxQi7). Below, you can either reference them directly using the syntax `gdrive:networks/<filename>.pkl`, or download them manually and reference by filename.
+
+```.bash
+# Generate uncurated ffhq images (matches paper Figure 12)
+python run_generator.py generate-images --network=gdrive:networks/stylegan2-ffhq-config-f.pkl \
+  --seeds=6600-6625 --truncation-psi=0.5
+
+# Generate curated ffhq images (matches paper Figure 11)
+python run_generator.py generate-images --network=gdrive:networks/stylegan2-ffhq-config-f.pkl \
+  --seeds=66,230,389,1518 --truncation-psi=1.0
+
+# Generate uncurated car images
+python run_generator.py generate-images --network=gdrive:networks/stylegan2-car-config-f.pkl \
+  --seeds=6000-6025 --truncation-psi=0.5
+
+# Example of style mixing (matches the corresponding video clip)
+python run_generator.py style-mixing-example --network=gdrive:networks/stylegan2-ffhq-config-f.pkl \
+  --row-seeds=85,100,75,458,1500 --col-seeds=55,821,1789,293 --truncation-psi=1.0
+```
+
+The results are placed in `results/<RUNNING_ID>/*.png`. You can change the location with `--result-dir`. For example, `--result-dir=~/my-stylegan2-results`.
+
+You can import the networks in your own Python code using `pickle.load()`. For this to work, you need to include the `dnnlib` source directory in `PYTHONPATH` and create a default TensorFlow session by calling `dnnlib.tflib.init_tf()`. See [run_generator.py](./run_generator.py) and [pretrained_networks.py](./pretrained_networks.py) for examples.
 
 ## Preparing datasets
 
@@ -80,33 +141,9 @@ python dataset_tool.py create_from_images ~/datasets/my-custom-dataset ~/my-cust
 python dataset_tool.py display ~/datasets/my-custom-dataset
 ```
 
-## Using pre-trained networks
+## Projecting images to latent space
 
-Pre-trained networks are stored as `*.pkl` files on the [StyleGAN2 Google Drive folder](https://drive.google.com/open?id=1QHc-yF5C3DChRwSdZKcx1w6K8JvSxQi7). Below, you can either reference them directly using the syntax `gdrive:networks/<filename>.pkl`, or download them manually and reference by filename.
-
-**Generating images**:
-
-```.bash
-# Generate uncurated ffhq images (matches paper Figure 12)
-python run_generator.py generate-images --network=gdrive:networks/stylegan2-ffhq-config-f.pkl \
-  --seeds=6600-6625 --truncation-psi=0.5
-
-# Generate curated ffhq images (matches paper Figure 11)
-python run_generator.py generate-images --network=gdrive:networks/stylegan2-ffhq-config-f.pkl \
-  --seeds=66,230,389,1518 --truncation-psi=1.0
-
-# Generate uncurated car images
-python run_generator.py generate-images --network=gdrive:networks/stylegan2-car-config-f.pkl \
-  --seeds=6000-6025 --truncation-psi=0.5
-
-# Example of style mixing (matches the corresponding video clip)
-python run_generator.py style-mixing-example --network=gdrive:networks/stylegan2-ffhq-config-f.pkl \
-  --row-seeds=85,100,75,458,1500 --col-seeds=55,821,1789,293 --truncation-psi=1.0
-```
-
-The results are placed in `results/<RUNNING_ID>/*.png`. You can change the location with `--result-dir`. For example, `--result-dir=~/my-stylegan2-results`.
-
-**Projecting images to latent space**:
+To find the matching latent vectors for a set of images, run:
 
 ```.bash
 # Project generated images
@@ -117,8 +154,6 @@ python run_projector.py project-generated-images --network=gdrive:networks/style
 python run_projector.py project-real-images --network=gdrive:networks/stylegan2-car-config-f.pkl \
   --dataset=car --data-dir=~/datasets
 ```
-
-You can import the networks in your own Python code using `pickle.load()`. For this to work, you need to include the `dnnlib` source directory in `PYTHONPATH` and create a default TensorFlow session by calling `dnnlib.tflib.init_tf()`. See [run_generator.py](./run_generator.py) and [pretrained_networks.py](./pretrained_networks.py) for examples.
 
 ## Training networks
 
