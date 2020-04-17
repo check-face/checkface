@@ -4,7 +4,7 @@ import os
 import PIL.Image
 
 
-def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_size=4096, enable_padding=True):
+def image_align(img, face_landmarks, output_size=1024, transform_size=4096, enable_padding=True):
         # Align function from FFHQ dataset pre-processing step
         # https://github.com/NVlabs/ffhq-dataset/blob/master/download_ffhq.py
 
@@ -37,12 +37,6 @@ def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_
         c = eye_avg + eye_to_mouth * 0.1
         quad = np.stack([c - x - y, c - x + y, c + x + y, c + x - y])
         qsize = np.hypot(*x) * 2
-
-        # Load in-the-wild image.
-        if not os.path.isfile(src_file):
-            print('\nCannot find source image. Please run "--wilds" before "--align".')
-            return
-        img = PIL.Image.open(src_file)
 
         # Shrink.
         shrink = int(np.floor(qsize / output_size * 0.5))
@@ -80,5 +74,4 @@ def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_
         if output_size < transform_size:
             img = img.resize((output_size, output_size), PIL.Image.ANTIALIAS)
 
-        # Save aligned image.
-        img.save(dst_file, 'PNG')
+        return img

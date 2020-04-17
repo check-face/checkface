@@ -304,6 +304,7 @@ curl -F 'usrimg=@example.jpg' https://api.checkface.ml/api/uploadimage/
 
 ## GET /api/uploadimage/
 
+The same as [/api/viewimage](#get-apiuploadimage)
 To check that an image uploaded, you can GET it on this endpoint using the imgguid returned by the POST.
 
 ### Query Parameters
@@ -314,6 +315,29 @@ To check that an image uploaded, you can GET it on this endpoint using the imggu
 
 An image
 
+## GET /api/viewimage/
+
+To check any imgguid, for example an image you uploaded, an aligned image, or any image encoding checkpoints.
+
+### Query Parameters
+
+`imgguid` **guid** globally unique identifier for images
+
+### Returns
+
+An image
+
+## GET /api/encodeimage/
+
+To check that an image uploaded, you can GET it on this endpoint using the imgguid returned by the POST.
+
+### Query Parameters
+
+`imgguid` **guid** globally unique identifier returned when posting an image to [/api/uploadimage/](#post-apiuploadimage)
+
+### Returns
+
+An image
 <script>
 (async function() {
     let resp = await fetch(window.location.href)

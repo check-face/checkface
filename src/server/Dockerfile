@@ -19,6 +19,8 @@ RUN apt install --no-install-recommends -y ffmpeg
 COPY ./requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 WORKDIR /app
+COPY ./fetchKerasModels.py /app/fetchKerasModels.py
+RUN python fetchKerasModels.py
 COPY --from=download-model /app/.stylegan2-cache /app/.stylegan2-cache
 COPY . /app
 CMD ["python", "checkface.py"]

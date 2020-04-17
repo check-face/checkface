@@ -196,14 +196,54 @@ class GenerateImageJob:
         else:
             return None
 
+class EncodeJob:
+    def __init__(self, target_image, current_latent, current_ticks, name):
+        self.target_image = target_image
+        self.current_latent = current_latent
+        self.current_ticks = current_ticks
+        self.name = name
+        self.evt = threading.Event()
 
+    def __str__(self):
+        return self.name
+
+    def set_result(self, result_latent):
+        self.currentLatent = result_latent
+        self.evt.set()
+
+    def get_result(self):
+        if self.evt.is_set():
+            return True
+        else:
+            return None
+
+class AlignJob:
+    def __init__(self, srcfile, name):
+        self.srcfile = srcfile
+        self.name = name
+        self.evt = threading.Event()
+
+    def __str__(self):
+        return self.name
+
+    def set_result(self, aligned_faces_imgs):
+        self.aligned_faces_imgs = aligned_faces_imgs
+        self.evt.set()
+
+    def wait_for_aligned(self, timeout):
+        if self.evt.wait(timeout):
+            return self.aligned_faces_imgs
+        else:
+            return None
 
 default_image_dim = 300
 
 requestTimeSummary = Summary('request_processing_seconds',
                              'Time spent processing request')
 imagesGenCounter = Counter('image_generating', 'Number of images generated')
-jobQueue = Gauge('job_queue', 'Number of jobs in the queue')
+guage_job_queue = Gauge('job_queue', 'Number of jobs in the queue')
+guage_align_job_queue = Gauge('align_job_queue', 'Number of jobs in the alignment job queue')
+guage_encode_job_queue = Gauge('encode_job_queue', 'Number of jobs in the encode / latent recovery job queue')
 generatorNetworkTime = Summary('generator_network_seconds', 'Time taken to run \
                                 the generator network')
 
@@ -238,8 +278,10 @@ def registerLatent():
     db.latents.insert_one({'_id':str(guid), 'type': latent_type, 'latent':latent_data.tolist()})
     return str(guid)
 
-# such a queue
-q = queue.Queue()
+job_queue = queue.Queue()
+encode_job_queue = queue.Queue()
+align_job_queue = queue.Queue()
+queues_evt = threading.Event()
 
 
 def defaultedRequestInt(request, param_name, default_val, min_val, max_val):
@@ -265,8 +307,9 @@ def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
 
     if not os.path.isfile(name):
         job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
-        q.put(job)
-        jobQueue.inc(1)
+        job_queue.put(job)
+        queues_evt.set()
+        guage_job_queue.inc(1)
         img = job.wait_for_img(30)
         if img:
             resized = img.resize(
@@ -339,8 +382,9 @@ def generate_gif(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_f
 
     jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} f{i}") for i, latent in enumerate(latents)]
     for job in jobs:
-        q.put(job)
-        jobQueue.inc(1)
+        job_queue.put(job)
+        queues_evt.set()
+        guage_job_queue.inc(1)
 
     imgs = [job.wait_for_img(30) for job in jobs]
 
@@ -390,8 +434,9 @@ def generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, imag
 
     jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} f{i}") for i, latent in enumerate(latents)]
     for job in jobs:
-        q.put(job)
-        jobQueue.inc(1)
+        job_queue.put(job)
+        queues_evt.set()
+        guage_job_queue.inc(1)
 
     imgs = [job.wait_for_img(30) for job in jobs]
 
@@ -478,30 +523,224 @@ def uploadimage():
         return str(guid)
 
 @app.route('/api/uploadimage/', methods=['GET'])
-def getmyface():
+@app.route('/api/encodeimage/viewimage/', methods=['GET'])
+def get_uploadimage():
     imgguid = request.args.get('imgguid')
     record = db.uploadedImages.find_one({'_id': imgguid})
     filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", record["filename"])
     return send_file(filename)
 
+def wait_align_images(srcfile: str, name: str):
+    job = AlignJob(srcfile, name)
+    align_job_queue.put(job)
+    queues_evt.set()
+    guage_align_job_queue.inc(1)
+    imgs = job.wait_for_aligned(30)
+    if imgs:
+        return imgs
+    else:
+        raise Exception("Aligning image failed or timed out")
+
+@app.route('/api/encodeimage/alignimage/', methods=['POST'])
+def align_uploadedimage():
+    imgguid = request.args.get('imgguid')
+    srcrecord = db.uploadedImages.find_one({'_id': imgguid})
+    if 'alignedguids' in srcrecord:
+        print(f"Faces already aligned for {imgguid}")
+        return jsonify(srcrecord['alignedguids'])
+    else:
+        srcfilename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", srcrecord["filename"])
+        alignedimgs = wait_align_images(srcfilename, f"src_imgguid: {imgguid}")
+        alignedguids = []
+        try:
+            for alignedimg in alignedimgs:
+                alignedguid = uuid.uuid4()
+                basename = f"{str(alignedguid)}.png"
+                filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", basename)
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
+                alignedimg.save(filename, 'PNG')
+                db.uploadedImages.insert_one({'_id': str(alignedguid), 'type': "aligned", 'filename': basename})
+                alignedguids.append(str(alignedguid))
+                
+            db.uploadedImages.update_one(
+                {'_id': imgguid},
+                {
+                    "$set": { "alignedguids": alignedguids }
+                })
+        except pymongo.errors.PyMongoError:
+            return flask.Response('Database error', status=500)
+        return jsonify(alignedguids)
+
+@app.route('/api/encodeimage/beginencoding/', methods=['POST'])
+def encodemyface():
+    imgguid = request.args.get('imgguid')
+    record = db.uploadedImages.find_one({'_id': imgguid})
+    filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", record["filename"])
+    # Begin an encode job for the image previously uploaded to be encoded
+    # 
+    encodeguid = uuid.uuid4()
+    try:
+        db.encode_jobs.insert_one({'_id':str(encodeguid) })
+    except pymongo.errors.PyMongoError:
+        return flask.Response('Database error', status=500)
+
+        # job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
+    encode_job_queue.put(job)
+    queues_evt.set()
+    guage_encode_job_queue.inc(1)
+
+    return str(encodeguid)
+
+    # TODO Implement a second Job Queue
+    # TODO Method to make encoding job queue pause temporarily when we hit either 20 
+    # requests for a batch, or hit 1s of wait time
+
+    # if not os.path.isfile(name):
+    #     job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
+    #     job_queue.put(job)
+    #     guage_job_queue.inc(1)
+    #     img = job.wait_for_img(30)
+    #     if img:
+    #         resized = img.resize(
+    #                 (image_dim, image_dim), PIL.Image.ANTIALIAS)
+    #         resized.save(name, 'JPEG')
+    #     else:
+    #         raise Exception("Generating image failed or timed out")
+
+@app.route('/api/encodeimage/status/', methods=['GET'])
+def getmyface():
+    encodeguid = request.args.get('encodeguid')
+    record = db.encode_jobs.find_one({'_id': encodeguid})
+    # filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", record["filename"])
+    status = { "finished": False }
+    return jsonify(status)
 
 @app.route('/api/queue/', methods=['GET'])
 def healthcheck():
-    return jsonify({"queue": q.qsize()})
+    return jsonify({"queue": job_queue.qsize()})
 
 
 def get_batch(batchsize):
-    yield q.get(True) # will block until it gets a job
-    jobQueue.dec(1)
-    for i in range(batchsize-1):
-        if not q.empty():
-            yield q.get_nowait()
-            jobQueue.dec(1)
+    for i in range(batchsize):
+        if not job_queue.empty():
+            yield job_queue.get_nowait()
+            guage_job_queue.dec(1)
+        else:
+            break
 
+def create_perceptual_model(Gs):
+
+    from encoder.generator_model import Generator
+    from encoder.perceptual_model import PerceptualModel
+    # for now it's unclear if larger batch leads to better performance/quality
+    batch_size = 1 #@param {type:"slider", min: 1, max: 10, step: 1}
+
+    # Perceptual model params
+    image_size= 256 #@param {type:"slider", min: 32, max: 1024, step: 32}
+
+    # Generator params
+    randomize_noise = False
+    generator = Generator(Gs, batch_size, randomize_noise=randomize_noise)
+    perceptual_model = PerceptualModel(image_size, layer=9, batch_size=batch_size)
+    perceptual_model.build_perceptual_model(generator.generated_image)
+    return generator, perceptual_model
+
+from ffhq_dataset.face_alignment import image_align
+# for aligning faces
+def load_landmarks_detector():
+    import bz2
+    from keras.utils import get_file
+    from ffhq_dataset.landmarks_detector import LandmarksDetector
+
+    LANDMARKS_MODEL_URL = 'http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2'
+
+
+    def unpack_bz2(src_path):
+        dst_path = src_path[:-4]
+        if not os.path.exists(dst_path):
+            data = bz2.BZ2File(src_path).read()
+            with open(dst_path, 'wb') as fp:
+                fp.write(data)
+        return dst_path
+
+    landmarks_model_path = unpack_bz2(get_file('shape_predictor_68_face_landmarks.dat.bz2',
+                                            LANDMARKS_MODEL_URL, cache_subdir='temp'))
+    return LandmarksDetector(landmarks_model_path)
+
+def align_single_image(landmarks_detector, srcfile: str):
+    from ffhq_dataset.face_alignment import image_align
+    alignedFaces = []
+    srcimg = PIL.Image.open(srcfile)
+    landmarks = list(landmarks_detector.get_landmarks(srcfile))
+    for face_landmarks in landmarks:
+        
+        aligned_image = image_align(srcimg, face_landmarks)
+        alignedFaces.append(aligned_image)
+    return alignedFaces
+
+def generate_images(Gs):
+    if job_queue.empty():
+        return False
+    generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '10'))))
+
+    latents = np.array([job.latent for job in generateImageJobs])
+
+    print(f"Running jobs {[str(job) for job in generateImageJobs]}")
+
+    images = toImages(Gs, [toDLat(Gs, lat) for lat in latents], None)
+    for img, job in zip(images, generateImageJobs):
+        job.set_result(img)
+        imagesGenCounter.inc()
+
+    return True
+
+
+def align_images(landmarks_detector):
+    if align_job_queue.empty(): 
+        return False
+    alignJob: AlignJob = align_job_queue.get_nowait()
+    guage_align_job_queue.dec(1)
+    print(f"Running jobs {[str(alignJob)]}")
+    aligned_faces = align_single_image(landmarks_detector, alignJob.srcfile)
+    alignJob.set_result(aligned_faces)
+    print(f"Align job {str(alignJob)} got {len(aligned_faces)} faces")
+    # return True
+
+def recover_latents(perceptual_model):
+    if encode_job_queue.empty():
+        return False
+    current_encode_job = encode_job_queue.get_nowait()
+    guage_encode_job_queue.dec(1)
+
+    return True
 
 def worker():
+    """
+    The worker runs on a single thread to execute jobs that require GPU resources
+    
+    There are 3 basic Jobs that a worker can complete, namely:
+     - Alignment
+     - Image Generation
+     - Image Encoding to latent vectors
+
+    Each of these jobs is put on a queue, we have access to all 3 of the queues
+    Priority over system performance with the monolithic architecture
+
+    First we will execte any image batches, as this will return the most things possible
+    Execution time can be tracked, as well as the presence of other queue items and
+    provide the logic for choosing the cutoff point for latent 
+    encoding, and can resume processing a job at a later stage
+    Next do any align jobs.
+    Followed by any remaining Image Encoding jobs which are by far the most expensive
+
+    """
     dnnlib.tflib.init_tf()
+    print("Loading generator model")
     Gs = fetch_model()
+    print("Loading landmarks detector")
+    landmarks_detector = load_landmarks_detector()
+    print("Loading perceptual model")
+    perceptual_model = create_perceptual_model(Gs)
     global dlatent_avg
     dlatent_avg = Gs.get_var('dlatent_avg')
 
@@ -515,19 +754,27 @@ def worker():
     print("Generator ready")
 
     while True:
-        generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '10'))))
+        hasWork = False
 
-        latents = np.array([job.latent for job in generateImageJobs])
+        # Generate any images first
+        hasWork = hasWork or generate_images(Gs)
 
-        print(f"Running jobs {[str(job) for job in generateImageJobs]}")
+        # Next Align an image job if there are some
+        hasWork = hasWork or align_images(landmarks_detector)
 
-        images = toImages(Gs, [toDLat(Gs, lat) for lat in latents], None)
-        for img, job in zip(images, generateImageJobs):
-            job.set_result(img)
-            imagesGenCounter.inc()
+        # Finally Encode images and recover the latents
+        hasWork = hasWork or recover_latents(perceptual_model)
 
-        print(f"Finished batch job")
-
+        # Consider race condition - a job could be added after observing that there is no work but before
+        # clearing  queues_evt; we must make sure that the job is handled before waiting on queues_evt
+        if hasWork:
+            print("Finished batch job")
+            queues_evt.set()
+        elif queues_evt.is_set():
+            print("No work - clearing queues_evt")
+            queues_evt.clear()
+        else:
+            queues_evt.wait() # wait for work trigger to prevent spinning unnecessarily
 
 
 if __name__ == "__main__":
