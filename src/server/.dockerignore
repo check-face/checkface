@@ -3,4 +3,5 @@ results
 **/_cudacache
 .stylegan2-cache
 dbdata
+checkfacedata
 venv/

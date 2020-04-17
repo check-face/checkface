@@ -44,7 +44,7 @@ synthesis_kwargs = dict(output_transform=dict(
 # want to have to access the massive Gs object outside of the worker thread,
 # thus we update here when we can.
 
-GsInputDim = 512
+GsInputDim = 512 # updated in worker
 
 
 def fromSeed(seed, dim=0, dimOffset=0):
@@ -126,6 +126,57 @@ def hashToSeed(hash):
         hash = ''
     return int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
 
+class LatentProxy:
+    '''
+    This is an Abstract Base Class for both seeds and guids 
+    Represents something that can become a latent, be it a seed or a guid in the database
+    '''
+    
+    def getLatent(self):
+        raise NotImplementedError()
+    
+    def getName(self):
+        raise NotImplementedError()
+    
+
+class LatentBySeed(LatentProxy):
+    def __init__(self, seed: int):
+        self.seed = seed
+        self.latent = fromSeed(self.seed)
+
+    def getLatent(self):
+        return self.latent
+    
+    def getName(self):
+        return f"s{str(self.seed)}"
+
+    def getSeed(self):
+        return self.seed
+    
+    
+class LatentByHashString(LatentBySeed):
+    def __init__(self, hashstr: str):
+        super().__init__(seed=hashToSeed(hashstr))
+        self.hashstr = hashstr
+        
+class LatentByGuid(LatentProxy):
+    def __init__(self, guid: uuid.UUID):
+        self.guid = guid
+        record = db.latents.find_one({'_id': str(self.guid)})
+        if not record:
+            raise KeyError('Cannot find latent for guid')
+        latentType = record['type']
+        if latentType == 'qlatent':
+            self.latent = np.array(record['latent'])
+        else:
+            raise NotImplementedError(f"Latent not implemented for type: {latentType}")
+    
+    def getLatent(self):
+        return self.latent
+    
+    def getName(self):
+        return f"GUID{str(self.guid)}"
+
 class GenerateImageJob:
     def __init__(self, latent, name):
         self.latent = latent
@@ -158,6 +209,7 @@ generatorNetworkTime = Summary('generator_network_seconds', 'Time taken to run \
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MiB
 
 
 @app.route('/status/', methods=['GET'])
@@ -177,9 +229,9 @@ def registerLatent():
     except TypeError:
         return flask.Response('Latent must be array of floats', status=400)
     if latent_data.shape == (512,):
-        latent_type = 'dlatent'
-    elif latent_data.shape == (18, 512):
         latent_type = 'qlatent'
+    elif latent_data.shape == (18, 512):
+        latent_type = 'dlatent'
     else:
         return flask.Response('Latent must be array of shape (512,) or (18, 512)', status=400)
     guid = uuid.uuid4()
@@ -206,13 +258,13 @@ def defaultedRequestInt(request, param_name, default_val, min_val, max_val):
 def getRequestedImageDim(request):
     return defaultedRequestInt(request, 'dim', default_image_dim, 10, 1024)
 
-def handle_generate_image_request(seed, image_dim):
+def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
     os.makedirs("outputImages", exist_ok=True)
 
     name = os.path.join(os.getcwd(), "outputImages",
-                        f"s{seed}_{image_dim}.jpg")
+                        f"{latentProxy.getName()}_{image_dim}.jpg")
     if not os.path.isfile(name):
-        job = GenerateImageJob(fromSeed(seed), f"s{seed}_{image_dim}")
+        job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
         q.put(job)
         jobQueue.inc(1)
         img = job.wait_for_img(30)
@@ -238,43 +290,54 @@ def image_generation_legacy(hash):
     https://flask.palletsprojects.com/en/1.0.x/quickstart/#variable-rules
 
     '''
-    return handle_generate_image_request(hashToSeed(hash))
+    return handle_generate_image_request(LatentByHashString(hash), 300)
 
-def useHashOrSeed(hash, seedstr):
+def useHashOrSeedOrGuid(hashstr: str, seedstr: str, guidstr: str):
+    if guidstr:
+        guid = uuid.UUID(hex = guidstr)
+        return LatentByGuid(guid)
     if seedstr:
-        seed = int(seedstr)
-    else:
-        seed = hashToSeed(hash)
-    return seed
+        try:
+            seed = int(seedstr)
+            return LatentBySeed(seed)
+        except ValueError:
+            raise ValueError("Seed must be a base 10 number")
 
-def getRequestSeed(request):
-    hash = request.args.get('value')
+    # fallback on hash if nothing else
+    return LatentByHashString(hashstr)
+
+def getRequestLatent(request):
+    hashstr = request.args.get('value')
     seedstr = request.args.get('seed')
-    return useHashOrSeed(hash, seedstr)
+    guidstr = request.args.get('guid')
+    return useHashOrSeedOrGuid(hashstr, seedstr, guidstr)
 
 
 @app.route('/api/face/', methods=['GET'])
 def image_generation():
     with requestTimeSummary.time():
-        seed = getRequestSeed(request)
+        latentProxy = getRequestLatent(request)
         image_dim = getRequestedImageDim(request)
-        return handle_generate_image_request(seed, image_dim)
+        return handle_generate_image_request(latentProxy, image_dim)
 
 
 @app.route('/api/hashdata/', methods=['GET'])
 def hashlatentdata():
-    seed = getRequestSeed(request)
-    latent = fromSeed(seed)
-    return jsonify({"seed": seed, "qlatent": latent.tolist()})
+    latentProxy = getRequestLatent(request)
+    data = {"qlatent": latentProxy.getLatent()}
+    if isinstance(latentProxy, LatentBySeed):
+        data['seed'] = latentProxy.getSeed()
 
-def generate_gif(from_seed, to_seed, num_frames, fps, image_dim, name):
-    latent1 = fromSeed(from_seed)
-    latent2 = fromSeed(to_seed)
+    return jsonify(data)
+
+def generate_gif(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, fps, image_dim, name):
+    latent1 = fromLatentProxy.getLatent()
+    latent2 = toLatentProxy.getLatent()
 
     vals = [(math.sin(i) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
     latents = [latent1 * i + latent2 * (1 - i) for i in vals]
 
-    jobs = [GenerateImageJob(latent, f"from s{from_seed} to s{to_seed} f{i}") for i, latent in enumerate(latents)]
+    jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} f{i}") for i, latent in enumerate(latents)]
     for job in jobs:
         q.put(job)
         jobQueue.inc(1)
@@ -295,33 +358,35 @@ def gif_generation():
 
     fromHash = request.args.get('from_value')
     fromSeedStr = request.args.get('from_seed')
-    from_seed = useHashOrSeed(fromHash, fromSeedStr)
+    fromGuidStr = request.args.get('from_guid')
+    fromLatentProxy = useHashOrSeedOrGuid(fromHash, fromSeedStr, fromGuidStr)
 
     toHash = request.args.get('to_value')
     toSeedStr = request.args.get('to_seed')
-    to_seed = useHashOrSeed(toHash, toSeedStr)
+    toGuidStr = request.args.get('to_guid')
+    toLatentProxy = useHashOrSeedOrGuid(toHash, toSeedStr, toGuidStr)
 
     image_dim = getRequestedImageDim(request)
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
 
     name = os.path.join(os.getcwd(), "outputGifs",
-                        f"from s{from_seed} to s{to_seed} n{num_frames}f{fps}x{image_dim}.gif")
+                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}.gif")
     if not os.path.isfile(name):
-        generate_gif(from_seed, to_seed, num_frames, fps, image_dim, name)
+        generate_gif(fromLatentProxy, toLatentProxy, num_frames, fps, image_dim, name)
     else:
         print(f"Gif file already exists: {name}")
 
     return send_file(name, mimetype='image/gif')
 
-def generate_mp4(from_seed, to_seed, num_frames, fps, kbitrate, image_dim, name):
-    latent1 = fromSeed(from_seed)
-    latent2 = fromSeed(to_seed)
+def generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, image_dim, name):
+    latent1 = fromLatentProxy.getLatent()
+    latent2 = toLatentProxy.getLatent()
 
     vals = [(math.sin(i + math.pi/2) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
     latents = [latent1 * i + latent2 * (1 - i) for i in vals]
 
-    jobs = [GenerateImageJob(latent, f"from s{from_seed} to s{to_seed} f{i}") for i, latent in enumerate(latents)]
+    jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} f{i}") for i, latent in enumerate(latents)]
     for job in jobs:
         q.put(job)
         jobQueue.inc(1)
@@ -347,11 +412,13 @@ def mp4_generation():
 
     fromHash = request.args.get('from_value')
     fromSeedStr = request.args.get('from_seed')
-    from_seed = useHashOrSeed(fromHash, fromSeedStr)
+    fromGuidStr = request.args.get('from_guid')
+    fromLatentProxy = useHashOrSeedOrGuid(fromHash, fromSeedStr, fromGuidStr)
 
     toHash = request.args.get('to_value')
     toSeedStr = request.args.get('to_seed')
-    to_seed = useHashOrSeed(toHash, toSeedStr)
+    toGuidStr = request.args.get('to_guid')
+    toLatentProxy = useHashOrSeedOrGuid(toHash, toSeedStr, toGuidStr)
 
     image_dim = getRequestedImageDim(request)
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
@@ -359,10 +426,10 @@ def mp4_generation():
     kbitrate = defaultedRequestInt(request, 'kbitrate', 2400, 100, 20000)
 
     name = os.path.join(os.getcwd(), "outputMp4s",
-                        f"from s{from_seed} to s{to_seed} n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
+                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
 
     if not os.path.isfile(name):
-        generate_mp4(from_seed, to_seed, num_frames, fps, kbitrate, image_dim, name)
+        generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, image_dim, name)
     else:
         print(f"MP4 file already exists: {name}")
 
@@ -381,6 +448,38 @@ def mp4_generation():
 
     return send_file(name, mimetype='video/mp4')
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+def getextension(filename):
+    return filename.rsplit('.', 1)[1].lower()
+def allowed_file(filename):
+    return '.' in filename and \
+           getextension(filename) in ALLOWED_EXTENSIONS
+
+@app.route('/api/uploadimage/', methods=['POST'])
+def uploadimage():
+    file = request.files['usrimg']
+    if not file:
+        return flask.Response('No file uploaded for usrimg', status=400)
+    elif not allowed_file(file.filename):
+        return flask.Response(f'File extension must be in {ALLOWED_EXTENSIONS}', status=400)
+    else:
+        guid = uuid.uuid4()
+        basename = f"{str(guid)}.{getextension(file.filename)}"
+        filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", basename)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        file.save(filename)
+        try:
+            db.uploadedImages.insert_one({'_id':str(guid), 'type': "rawupload", 'filename': basename})
+        except pymongo.errors.PyMongoError:
+            return flask.Response('Database error', status=500)
+        return str(guid)
+
+@app.route('/api/uploadimage/', methods=['GET'])
+def getmyface():
+    imgguid = request.args.get('imgguid')
+    record = db.uploadedImages.find_one({'_id': imgguid})
+    filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", record["filename"])
+    return send_file(filename)
 
 
 @app.route('/api/queue/', methods=['GET'])
@@ -405,6 +504,7 @@ def worker():
 
     # Setup for the other bits of the program, hacky and vulnerable to race
     # conditions and might have old data
+    global GsInputDim
     GsInputDim = Gs.input_shape[1]
 
     print(f"Warming up generator network with {num_gpus} gpus")
