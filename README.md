@@ -140,11 +140,46 @@ Help needed to set up auto updating and registering in file context menu.
 ### Backend API
 
 We rely on Nvlabs StyleGAN2 to run our inference, using the default model.
-You can run it in docker to avoid all the dependencies, as shown above.
+We use docker even in development to make it easy to use all the same dependencies as production.
+
+We are currently working on integrating the encoder from https://github.com/rolux/stylegan2encoder
+as a prerequisite to morphing with real faces. Mongodb is used to store the state of encoding jobs.
+
+Run mongodb with docker:
+
+```console
+cd src/server
+docker network create checkfaceapi
+docker run -d \
+  -v $(pwd)/dbdata:/data/db \
+  -e "MONGO_INITDB_ROOT_USERNAME=root" \
+  -e "MONGO_INITDB_ROOT_PASSWORD=example" \
+  --restart always \
+  mongo:4.2
+```
+
+Install debugpy for debugger:
+
+```console
+pip install debugpy==1.0.0b7
+```
+
+Then a typical development workflow may include running the following command and attaching a debugger to port 3000:
+
+```console
+docker build -t cf-dev . \
+&& docker run --network checkfaceapi \
+  -v $(pwd)/checkfacedata:/app/checkfacedata \
+  -v $(pwd)/dnnlib/tflib/_cudacache:/app/dnnlib/tflib/_cudacache
+  -p "8080:8080" -p "8000:8000" -p "3000:3000" \
+  --gpus all \
+  --rm -it \
+  --name checkfacedev \
+  cf-dev python -m debugpy --listen 0.0.0.0:3000 ./checkface.py```
 
 #### System requirements
 
-All you really need is a CUDA GPU with enough VRAM to load the inference model, which has been tested to work on a RTX 2080 Ti with 12GB of VRAM, with NVIDIA driver 435.21.
+All you really need is a CUDA GPU with enough VRAM to load the inference model, which has been tested to work on an RTX 2080 Ti with 11GB of VRAM, with NVIDIA driver 435.21.
 
 ## License
 

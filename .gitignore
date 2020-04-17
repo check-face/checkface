@@ -1,7 +1,7 @@
 venv/
 outputImages/
 
-\.vscode/
+\.vscode/settings.json
 \.ionide/
 
 cache/
