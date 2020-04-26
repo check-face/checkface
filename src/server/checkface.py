@@ -218,8 +218,8 @@ class EncodeJob:
             return None
 
 class AlignJob:
-    def __init__(self, srcfile, name):
-        self.srcfile = srcfile
+    def __init__(self, srcimg, name):
+        self.srcimg = srcimg
         self.name = name
         self.evt = threading.Event()
 
@@ -530,8 +530,8 @@ def get_uploadimage():
     filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", record["filename"])
     return send_file(filename)
 
-def wait_align_images(srcfile: str, name: str):
-    job = AlignJob(srcfile, name)
+def wait_align_images(srcimg: PIL.Image, name: str):
+    job = AlignJob(srcimg, name)
     align_job_queue.put(job)
     queues_evt.set()
     guage_align_job_queue.inc(1)
@@ -550,7 +550,8 @@ def align_uploadedimage():
         return jsonify(srcrecord['alignedguids'])
     else:
         srcfilename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", srcrecord["filename"])
-        alignedimgs = wait_align_images(srcfilename, f"src_imgguid: {imgguid}")
+        srcimg = PIL.Image.open(srcfilename)
+        alignedimgs = wait_align_images(srcimg, f"src_imgguid: {imgguid}")
         alignedguids = []
         try:
             for alignedimg in alignedimgs:
@@ -667,11 +668,40 @@ def load_landmarks_detector():
                                             LANDMARKS_MODEL_URL, cache_subdir='temp'))
     return LandmarksDetector(landmarks_model_path)
 
-def align_single_image(landmarks_detector, srcfile: str):
+def scaledown(size):
+    width, height = size
+    ratio = float(width) / height
+
+    # cap so that smallest dimension is at most 512px
+    if(width > 512 or height > 512):
+        if(width > height):
+            height2 = 512
+            width2 = ratio * height2
+        else:
+            width2 = 512
+            height2 = width2 / ratio
+    else:
+        width2 = width
+        height2 = height
+
+    # cap at at most 1MP
+    maxPixels = 1000000
+    pixels = width2 * height2
+    if (pixels <= maxPixels):
+        return (width2, height2)
+
+    scale = math.sqrt(float(pixels) / maxPixels)
+    height3 = int(float(height2) / scale)
+    width3 = int(ratio * height2 / scale)
+    return (width3, height3)
+
+def align_single_image(landmarks_detector, srcimg: PIL.Image):
     from ffhq_dataset.face_alignment import image_align
     alignedFaces = []
-    srcimg = PIL.Image.open(srcfile)
-    landmarks = list(landmarks_detector.get_landmarks(srcfile))
+    swidth, sheight = scaledown(srcimg.size) # scale down for landmarks performance
+    smafile = os.path.join(os.getcwd(), "checkfacedata", "outputMp4s", "currAlignmentSma.jpg")
+    srcimg.resize((swidth, sheight)).save(smafile, "JPEG")
+    landmarks = list(landmarks_detector.get_landmarks(smafile))
     for face_landmarks in landmarks:
         
         aligned_image = image_align(srcimg, face_landmarks)
@@ -701,7 +731,7 @@ def align_images(landmarks_detector):
     alignJob: AlignJob = align_job_queue.get_nowait()
     guage_align_job_queue.dec(1)
     print(f"Running jobs {[str(alignJob)]}")
-    aligned_faces = align_single_image(landmarks_detector, alignJob.srcfile)
+    aligned_faces = align_single_image(landmarks_detector, alignJob.srcimg)
     alignJob.set_result(aligned_faces)
     print(f"Align job {str(alignJob)} got {len(aligned_faces)} faces")
     # return True
