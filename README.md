@@ -170,7 +170,7 @@ Then a typical development workflow may include running the following command an
 docker build -t cf-dev . \
 && docker run --network checkfaceapi \
   -v $(pwd)/checkfacedata:/app/checkfacedata \
-  -v $(pwd)/dnnlib/tflib/_cudacache:/app/dnnlib/tflib/_cudacache
+  -v $(pwd)/dnnlib/tflib/_cudacache:/app/dnnlib/tflib/_cudacache \
   -p "8080:8080" -p "8000:8000" -p "3000:3000" \
   --gpus all \
   --rm -it \
