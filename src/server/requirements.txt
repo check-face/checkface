@@ -21,6 +21,7 @@ astor==0.8.0
 certifi==2019.11.28
 chardet==3.0.4
 cmake==3.12.0
+debugpy==1.0.0b7
 dlib==19.18.0
 gast==0.2.2
 google-pasta==0.1.7
