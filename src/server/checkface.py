@@ -261,7 +261,7 @@ def getRequestedImageDim(request):
 def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
     os.makedirs("outputImages", exist_ok=True)
 
-    name = os.path.join(os.getcwd(), "outputImages",
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputImages",
                         f"{latentProxy.getName()}_{image_dim}.jpg")
     if not os.path.isfile(name):
         job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
@@ -330,56 +330,7 @@ def hashlatentdata():
 
     return jsonify(data)
 
-def generate_gif(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, fps, image_dim, name):
-    latent1 = fromLatentProxy.getLatent()
-    latent2 = toLatentProxy.getLatent()
-
-    vals = [(math.sin(i) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
-    latents = [latent1 * i + latent2 * (1 - i) for i in vals]
-
-    jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} f{i}") for i, latent in enumerate(latents)]
-    for job in jobs:
-        q.put(job)
-        jobQueue.inc(1)
-
-    imgs = [job.wait_for_img(30) for job in jobs]
-
-    for img in imgs:
-        if not img:
-            raise Exception("Generating image failed or timed out")
-
-    resized_imgs = [img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS) for img in imgs]
-
-    resized_imgs[0].save(name, save_all=True, append_images=resized_imgs[1:], duration=1000/fps, loop=0)
-
-@app.route('/api/gif/', methods=['GET'])
-def gif_generation():
-    os.makedirs("outputGifs", exist_ok=True)
-
-    fromHash = request.args.get('from_value')
-    fromSeedStr = request.args.get('from_seed')
-    fromGuidStr = request.args.get('from_guid')
-    fromLatentProxy = useHashOrSeedOrGuid(fromHash, fromSeedStr, fromGuidStr)
-
-    toHash = request.args.get('to_value')
-    toSeedStr = request.args.get('to_seed')
-    toGuidStr = request.args.get('to_guid')
-    toLatentProxy = useHashOrSeedOrGuid(toHash, toSeedStr, toGuidStr)
-
-    image_dim = getRequestedImageDim(request)
-    num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
-    fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
-
-    name = os.path.join(os.getcwd(), "outputGifs",
-                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}.gif")
-    if not os.path.isfile(name):
-        generate_gif(fromLatentProxy, toLatentProxy, num_frames, fps, image_dim, name)
-    else:
-        print(f"Gif file already exists: {name}")
-
-    return send_file(name, mimetype='image/gif')
-
-def generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, image_dim, name):
+def generate_morph(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, image_dim, name):
     latent1 = fromLatentProxy.getLatent()
     latent2 = toLatentProxy.getLatent()
 
@@ -397,10 +348,46 @@ def generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, imag
         if not img:
             raise Exception("Generating image failed or timed out")
 
-    framesdir = name + " - frames"
+    return [ img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS) for img in imgs ]
+
+def get_from_latent(request):
+    fromHash = request.args.get('from_value')
+    fromSeedStr = request.args.get('from_seed')
+    fromGuidStr = request.args.get('from_guid')
+    return useHashOrSeedOrGuid(fromHash, fromSeedStr, fromGuidStr)
+
+def get_to_latent(request):
+    toHash = request.args.get('to_value')
+    toSeedStr = request.args.get('to_seed')
+    toGuidStr = request.args.get('to_guid')
+    return useHashOrSeedOrGuid(toHash, toSeedStr, toGuidStr)
+
+@app.route('/api/gif/', methods=['GET'])
+def gif_generation():
+    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputGifs"), exist_ok=True)
+
+    fromLatentProxy = get_from_latent(request)
+    toLatentProxy = get_to_latent(request)
+
+    image_dim = getRequestedImageDim(request)
+    num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
+    fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
+
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputGifs",
+                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}.gif")
+    if not os.path.isfile(name):
+        images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
+        images[0].save(name, save_all=True, append_images=images[1:], duration=1000/fps, loop=0) # save as gif
+    else:
+        print(f"Gif file already exists: {name}")
+
+    return send_file(name, mimetype='image/gif')
+
+def generate_mp4(images, fps, kbitrate, name):
+    framesdir = os.path.join(os.getcwd(), "checkfacedata", "morphFrames", name + " - frames")
     os.makedirs(framesdir, exist_ok=True)
-    for i, img in enumerate(imgs):
-        img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS).save(os.path.join(framesdir, f"img{i:03d}.jpg"), 'JPEG')
+    for i, img in enumerate(images):
+        img.save(os.path.join(framesdir, f"img{i:03d}.jpg"), 'JPEG')
 
     print(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
     os.system(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
@@ -408,28 +395,22 @@ def generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, imag
 
 @app.route('/api/mp4/', methods=['GET'])
 def mp4_generation():
-    os.makedirs("outputMp4s", exist_ok=True)
+    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputMp4s"), exist_ok=True)
 
-    fromHash = request.args.get('from_value')
-    fromSeedStr = request.args.get('from_seed')
-    fromGuidStr = request.args.get('from_guid')
-    fromLatentProxy = useHashOrSeedOrGuid(fromHash, fromSeedStr, fromGuidStr)
-
-    toHash = request.args.get('to_value')
-    toSeedStr = request.args.get('to_seed')
-    toGuidStr = request.args.get('to_guid')
-    toLatentProxy = useHashOrSeedOrGuid(toHash, toSeedStr, toGuidStr)
+    fromLatentProxy = get_from_latent(request)
+    toLatentProxy = get_to_latent(request)
 
     image_dim = getRequestedImageDim(request)
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
     kbitrate = defaultedRequestInt(request, 'kbitrate', 2400, 100, 20000)
 
-    name = os.path.join(os.getcwd(), "outputMp4s",
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputMp4s",
                         f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
 
     if not os.path.isfile(name):
-        generate_mp4(fromLatentProxy, toLatentProxy, num_frames, fps, kbitrate, image_dim, name)
+        images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
+        generate_mp4(images, fps, kbitrate, name)
     else:
         print(f"MP4 file already exists: {name}")
 
