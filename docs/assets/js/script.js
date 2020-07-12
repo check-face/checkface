@@ -23,6 +23,13 @@ if(didRegisterSearch) {
     let form = document.getElementById('searchform');
     form.setAttribute("target", "_blank");
     form.setAttribute("onsubmit", "return window.myFunction()");
+
+    window.addEventListener("popstate", function(e) {
+        var value = e.state.value;
+        var myImage = document.getElementById("my-image");
+        document.getElementById('object').value = value;
+        myImage.src = 'https://api.checkface.ml/api/face/?value=' + encodeURIComponent(value) + "&dim=500";
+    });
 }
 
 //Features appearance
