@@ -49,3 +49,5 @@ for(let el of document.getElementsByClassName("add-feature-no-display")) {
     //don't hide initially incase javascript not enabled to un-hide
     el.classList.add("feature-no-display");
 }
+
+document.getElementById('object').focus();
