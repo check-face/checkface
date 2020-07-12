@@ -22,6 +22,7 @@ from flask import send_file, request, jsonify, render_template
 from prometheus_client import start_http_server, Summary, Gauge, Counter
 import pymongo
 import uuid
+import logging
 np.set_printoptions(threshold=np.inf)
 client = pymongo.MongoClient("mongodb://root:example@db")
 db = client.test
@@ -112,7 +113,7 @@ def toImages(Gs, latents, image_size):
             network = "synthesis component"
         diff = time.time() - start
 
-        print(f"Took {diff:.2f} seconds to run {network}")
+        app.logger.info(f"Took {diff:.2f} seconds to run {network}")
         pilImages = [PIL.Image.fromarray(img, 'RGB') for img in images]
         if image_size:
             pilImages = [img.resize(
@@ -211,6 +212,8 @@ app = flask.Flask(__name__)
 app.config["DEBUG"] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MiB
 
+logging.basicConfig(level=logging.INFO)
+
 
 @app.route('/status/', methods=['GET'])
 def status():
@@ -277,7 +280,7 @@ def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
 
 
     else:
-        print(f"Image file already exists: {name}")
+        app.logger.info(f"Image file already exists: {name}")
     return send_file(name, mimetype='image/jpg')
 
 
@@ -379,7 +382,7 @@ def gif_generation():
         images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
         images[0].save(name, save_all=True, append_images=images[1:], duration=1000/fps, loop=0) # save as gif
     else:
-        print(f"Gif file already exists: {name}")
+        app.logger.info(f"Gif file already exists: {name}")
 
     return send_file(name, mimetype='image/gif')
 
@@ -389,7 +392,7 @@ def generate_mp4(images, fps, kbitrate, name):
     for i, img in enumerate(images):
         img.save(os.path.join(framesdir, f"img{i:03d}.jpg"), 'JPEG')
 
-    print(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
+    app.logger.info(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
     os.system(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
 
 
@@ -412,7 +415,7 @@ def mp4_generation():
         images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
         generate_mp4(images, fps, kbitrate, name)
     else:
-        print(f"MP4 file already exists: {name}")
+        app.logger.info(f"MP4 file already exists: {name}")
 
 
     embed_html = request.args.get('embed_html')
@@ -488,23 +491,23 @@ def worker():
     global GsInputDim
     GsInputDim = Gs.input_shape[1]
 
-    print(f"Warming up generator network with {num_gpus} gpus")
+    app.logger.info(f"Warming up generator network with {num_gpus} gpus")
     warmupNetwork = toImages(Gs, np.array([fromSeed(5)]), None)
-    print("Generator ready")
+    app.logger.info("Generator ready")
 
     while True:
         generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '10'))))
 
         latents = np.array([job.latent for job in generateImageJobs])
 
-        print(f"Running jobs {[str(job) for job in generateImageJobs]}")
+        app.logger.info(f"Running jobs {[str(job) for job in generateImageJobs]}")
 
         images = toImages(Gs, [toDLat(Gs, lat) for lat in latents], None)
         for img, job in zip(images, generateImageJobs):
             job.set_result(img)
             imagesGenCounter.inc()
 
-        print(f"Finished batch job")
+        app.logger.info(f"Finished batch job")
 
 
 
@@ -515,4 +518,4 @@ if __name__ == "__main__":
 
     start_http_server(int(os.getenv('METRICS_PORT', '8000')))
     app.run(host="0.0.0.0", port=os.getenv('API_PORT', '8080'))
-    print("Closing checkface server")
+    app.logger.info("Closing checkface server")
