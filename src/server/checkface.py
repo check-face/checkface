@@ -430,7 +430,7 @@ def mp4_generation():
 
 
 
-    return send_file(name, mimetype='video/mp4')
+    return send_file(name, mimetype='video/mp4', conditional=True)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 def getextension(filename):
