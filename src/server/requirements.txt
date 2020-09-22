@@ -2,7 +2,8 @@ cffi==1.12.3
 chardet==3.0.4
 Click==7.0
 cryptography==2.6.1
-Flask==1.0.2
+Flask==1.1.2
+Flask-Cors==3.0.9
 idna==2.8
 itsdangerous==1.1.0
 Jinja2==2.10.1
