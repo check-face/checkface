@@ -432,6 +432,39 @@ def mp4_generation():
 
     return send_file(name, mimetype='video/mp4', conditional=True)
 
+
+def generate_webp(images, fps, name):
+    framesdir = os.path.join(os.getcwd(), "checkfacedata", "morphFrames", name + " - frames")
+    os.makedirs(framesdir, exist_ok=True)
+    for i, img in enumerate(images):
+        img.save(os.path.join(framesdir, f"img{i:03d}.jpg"), 'JPEG')
+
+    app.logger.info(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -vcodec libwebp -loop 0 -y \"{name}\"")
+    os.system(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -vcodec libwebp -loop 0 -y \"{name}\"")
+
+
+@app.route('/api/webp/', methods=['GET'])
+def webp_generation():
+    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputWebPs"), exist_ok=True)
+
+    fromLatentProxy = get_from_latent(request)
+    toLatentProxy = get_to_latent(request)
+
+    image_dim = getRequestedImageDim(request)
+    num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
+    fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
+
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputWebPs",
+                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}.webp")
+
+    if not os.path.isfile(name):
+        images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
+        generate_webp(images, fps, name)
+    else:
+        app.logger.info(f"WEBP file already exists: {name}")
+
+    return send_file(name, mimetype='image/webp', conditional=True)
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 def getextension(filename):
     return filename.rsplit('.', 1)[1].lower()
