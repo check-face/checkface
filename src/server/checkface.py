@@ -19,7 +19,7 @@ import numpy as np
 import queue
 import hashlib
 from flask import send_file, request, jsonify, render_template
-import flast_cors
+import flask_cors
 from prometheus_client import start_http_server, Summary, Gauge, Counter
 import pymongo
 import uuid
@@ -212,7 +212,7 @@ generatorNetworkTime = Summary('generator_network_seconds', 'Time taken to run \
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MiB
-flast_cors.CORS(app) # enable CORS so can fetch content
+flask_cors.CORS(app) # enable CORS so can fetch content
 
 logging.basicConfig(level=logging.INFO)
 
