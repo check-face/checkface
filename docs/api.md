@@ -145,6 +145,32 @@ If `embed_html=true`, returns an html document, otherwise returns an mp4 video.
  1. [https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
  2. [https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80&embed_html=true](https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80&embed_html=true)
 
+## /api/linkpreview/
+
+Creates an image with each endpoint and the midpoint.
+Intented to be used as the link preview for a morph.
+
+Use `from_*` and `to_*` parameters to specify the start and end points of the mp4.
+You can mix and match values, seeds and guids.
+
+### Query Parameters
+
+`width` *optional* **int** between 100-1400 is the width of the image in px. Defaults to 1200 width and height of 628
+
+`from_value`, `to_value` *optional* **string** is any free text such as the hash of a file 
+
+`from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
+
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+
+### Returns
+
+An image
+
+### Example
+
+ [https://api.checkface.ml/api/linkpreview/?from_value=example&to_value=yeet](https://api.checkface.ml/api/linkpreview/?from_value=example&to_value=yeet)
+
 ## POST /api/registerlatent/
 
 POST json to this endpoint to register a latent for later use.

@@ -11,6 +11,7 @@ import dnnlib
 import time
 import os
 import PIL.Image
+import PIL.ImageDraw
 import PIL
 import sys
 import re
@@ -355,6 +356,55 @@ def generate_morph(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num
 
     return [ img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS) for img in imgs ]
 
+def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, preview_width, name):
+    latent1 = fromLatentProxy.getLatent()
+    latent2 = toLatentProxy.getLatent()
+    middleLatent = latent1 * 0.5 + latent2 * 0.5
+    latents = [latent1, latent2, middleLatent]
+    jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} preview{i}") for i, latent in enumerate(latents)]
+    for job in jobs:
+        q.put(job)
+        jobQueue.inc(1)
+
+    imgs = [job.wait_for_img(30) for job in jobs]
+
+    for img in imgs:
+        if not img:
+            raise Exception("Generating link preview failed or timed out")
+
+    standardHeight = 628
+    standardWidth = 1200
+    preview_height = int(round(standardHeight/standardWidth * preview_width))
+
+    faceDim = int(round(300 * preview_height / standardHeight))
+    sumDim = int(round(512 * preview_height / standardHeight))
+    face1 = imgs[0].resize((faceDim, faceDim), PIL.Image.ANTIALIAS)
+    face2 = imgs[1].resize((faceDim, faceDim), PIL.Image.ANTIALIAS)
+    sumFace = imgs[2].resize((sumDim, sumDim), PIL.Image.ANTIALIAS)
+
+    previewIm = PIL.Image.new("RGB", (preview_width, preview_height), color = "white")
+    gapsSize = (preview_width - faceDim - faceDim - sumDim) * 0.5 # 2 gaps for plus and equals
+    previewIm.paste(face1, (0, int(0.5 * (preview_height - faceDim))))
+    previewIm.paste(face2, (int(faceDim + gapsSize), int(0.5 * (preview_height - faceDim))))
+    previewIm.paste(sumFace, (int(math.ceil(preview_width - sumDim)), int(0.5 * (preview_height - sumDim))))
+
+    # draw plus sign
+    draw = PIL.ImageDraw.Draw(previewIm)
+    cwGap1 = faceDim + int(0.5 * gapsSize)
+    ch = int(preview_height * 0.5)
+    lineWidth = int(round(6 * preview_height / standardHeight))
+    symbolSize = 14 * preview_height / standardHeight
+    draw.line([cwGap1, ch-symbolSize, cwGap1, ch + symbolSize], width=lineWidth, fill="black")
+    draw.line([cwGap1-symbolSize, ch, cwGap1+symbolSize, ch], width=lineWidth, fill="black")
+
+    # draw equals sign
+    cwGap2 = preview_width - sumDim - 0.5 * gapsSize
+    eqH = int(round(0.6 * symbolSize))
+    draw.line([cwGap2-symbolSize, ch - eqH, cwGap2+symbolSize, ch - eqH], width=lineWidth, fill="black")
+    draw.line([cwGap2-symbolSize, ch + eqH, cwGap2+symbolSize, ch + eqH], width=lineWidth, fill="black")
+
+    previewIm.save(name, 'JPEG')
+
 def get_from_latent(request):
     fromHash = request.args.get('from_value')
     fromSeedStr = request.args.get('from_seed')
@@ -466,6 +516,25 @@ def webp_generation():
         app.logger.info(f"WEBP file already exists: {name}")
 
     return send_file(name, mimetype='image/webp', conditional=True)
+
+@app.route('/api/linkpreview/', methods=['GET'])
+def linkpreview_generation():
+    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputLinkPreviews"), exist_ok=True)
+
+    fromLatentProxy = get_from_latent(request)
+    toLatentProxy = get_to_latent(request)
+
+    preview_width = defaultedRequestInt(request, 'width', 1200, 100, 2400)
+
+
+    name = os.path.join(os.getcwd(), "checkfacedata", "outputLinkPreviews",
+                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} x{preview_width}.jpg")
+    if not os.path.isfile(name):
+        generate_link_preview(fromLatentProxy, toLatentProxy, preview_width, name)
+    else:
+        app.logger.info(f"Link preview file already exists: {name}")
+
+    return send_file(name, mimetype='image/jpg')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 def getextension(filename):
