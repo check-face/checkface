@@ -330,7 +330,7 @@ def image_generation():
 @app.route('/api/hashdata/', methods=['GET'])
 def hashlatentdata():
     latentProxy = getRequestLatent(request)
-    data = {"qlatent": latentProxy.getLatent()}
+    data = {"qlatent": latentProxy.getLatent().tolist()}
     if isinstance(latentProxy, LatentBySeed):
         data['seed'] = latentProxy.getSeed()
 
