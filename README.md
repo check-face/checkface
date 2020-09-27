@@ -144,7 +144,7 @@ You can run it in docker to avoid all the dependencies, as shown above.
 
 #### System requirements
 
-All you really need is a CUDA GPU with enough VRAM to load the inference model, which has been tested to work on a RTX 2080 Ti with 12GB of VRAM, with NVIDIA driver 435.21.
+All you really need is a CUDA GPU with enough VRAM to load the inference model, which has been tested to work on a RTX 2080 Ti with 11GB of VRAM, with NVIDIA driver 435.21.
 
 ## License
 
