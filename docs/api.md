@@ -81,6 +81,38 @@ Json object with data about the latent used for the given value
 
 [https://api.checkface.ml/api/hashdata/?value=example](https://api.checkface.ml/api/hashdata/?value=example)
 
+## /api/morphframe/
+
+Returns a single frame from a morph. Can be used to get the midpoint, 
+
+Use `from_*` and `to_*` parameters to specify the start and end points of the morph.
+You can mix and match values, seeds and guids.
+
+### Query Parameters
+
+`dim` *optional* **int** between 10-1024 is the size of the gif in px
+
+`num_frames` *optional* **int** between 3-200 is the number of frames. Defaults to 50
+
+`frame_num` **int** between 0 to (num_frames-1) specify the specific frame to return
+
+`linear` **bool** set true for a linear morph from start to end rather than trig based
+
+`from_value`, `to_value` *optional* **string** is any free text such as the hash of a file 
+
+`from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
+
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+
+### Returns
+
+An image
+
+### Example
+
+ [https://api.checkface.ml/api/morphframe/?from_value=example&to_value=yeet&frame_num=25&linear=true](https://api.checkface.ml/api/morphframe/?from_value=example&to_value=yeet&frame_num=25&linear=true)
+
+
 ## /api/gif/
 
 

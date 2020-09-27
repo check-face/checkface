@@ -247,6 +247,11 @@ def registerLatent():
 # such a queue
 q = queue.Queue()
 
+def argIsTrue(request, param_name):
+    argval = request.args.get(param_name)
+    if(argval):
+        argval = argval.lower()
+    return argval == 'true'
 
 def defaultedRequestInt(request, param_name, default_val, min_val, max_val):
     val = default_val
@@ -336,6 +341,82 @@ def hashlatentdata():
 
     return jsonify(data)
 
+outputMorphsDir = os.path.join(os.getcwd(), "checkfacedata", "outputMorphs")
+os.makedirs(outputMorphsDir, exist_ok=True)
+
+def getParentMorphdir(fromName, toName):
+    return os.path.join(outputMorphsDir,
+                    f"from {fromName} to {toName}")
+
+def getFramesMorphdir(fromName, toName, num_frames, image_dim, isLinear):
+    parentMorphdir = getParentMorphdir(fromName, toName)
+    shape = "linear" if isLinear else "trig"
+    framesdir = os.path.join(parentMorphdir, "frames",
+                    f"{shape} n{num_frames}x{image_dim}")
+    return parentMorphdir, framesdir
+
+def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, image_dim, framenums, isLinear):
+    """
+    For each specified frame num, checks if the frame exists
+    and if necessary generates and saves it. Returns the filenames
+    of all required frames, in the same order as framenums.
+
+    If isLinear, linearly morphs from start to end (inclusive)
+    Else, trig morphs from start to end and back (last frame is one frame away from start) (deduplicates if even num_frames)
+    """
+    parentMorphdir, framesdir = getFramesMorphdir(fromLatentProxy.getName(), toLatentProxy.getName(), num_frames, image_dim, isLinear)
+    os.makedirs(framesdir, exist_ok=True)
+
+    if (num_frames % 2) == 0 and not isLinear:
+        # trig function is mirrored so flip to only first half
+        # eg. for num_frames = 10
+        # 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+        # is the same as
+        # 0, 1, 2, 3, 4, 5, 4, 3, 2, 1
+
+        framenums = [ i if i < num_frames / 2 or i >= num_frames else num_frames - i for i in framenums ]
+        
+    frames = [ (i, os.path.join(framesdir, f"img{i:03d}.jpg")) for i in framenums ]
+    deduplicateBy = set() # keep all filenames in frames to return, but don't generate same file multiple times
+    latent1 = fromLatentProxy.getLatent()
+    latent2 = toLatentProxy.getLatent()
+    if isLinear:
+        vals = np.linspace(1, 0, num_frames, True) # in reverse to work same as trig
+    else:
+        vals = [(math.sin(i + math.pi/2) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
+
+    jobs = []
+    for i, fName in frames:
+        if os.path.isfile(fName):
+            app.logger.info(f"Frame already exists: {fName}")
+        elif not (fName in deduplicateBy):
+            latent = latent1 * vals[i] + latent2 * (1 - vals[i])
+            job = GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{i}")
+            q.put(job)
+            jobQueue.inc(1)
+            jobs.append((job, fName, image_dim))
+            deduplicateBy.add(fName)
+
+            # also save full size FROM and TO images for posterity sake 
+            if i == 0:
+                FROM_IMAGE = os.path.join(parentMorphdir, "FROM.jpg")
+                if not os.path.isfile(FROM_IMAGE):
+                    jobs.append((job, FROM_IMAGE, 1024))
+
+            if (isLinear and i == num_frames - 1) or (i == num_frames / 2 and not isLinear):
+                TO_IMAGE = os.path.join(parentMorphdir, "TO.jpg")
+                if not os.path.isfile(TO_IMAGE):
+                    jobs.append((job, TO_IMAGE, 1024))
+
+    imgs = [(job.wait_for_img(30), fName, dim) for (job, fName, dim) in jobs]
+
+    for img, fName, dim in imgs:
+        if not img:
+            raise Exception("Generating image failed or timed out")
+        img.resize((dim, dim), PIL.Image.ANTIALIAS).save(fName, 'JPEG')
+
+    return [ fName for i, fName in frames ]
+
 def generate_morph(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, image_dim, name):
     latent1 = fromLatentProxy.getLatent()
     latent2 = toLatentProxy.getLatent()
@@ -356,7 +437,17 @@ def generate_morph(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num
 
     return [ img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS) for img in imgs ]
 
-def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, preview_width, name):
+def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, preview_width):
+    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    previewsDir = os.path.join(parentMorphdir, "linkPreviews")
+    os.makedirs(previewsDir, exist_ok=True)
+
+    name = os.path.join(previewsDir, f"x{preview_width}.jpg")
+
+    if os.path.isfile(name):
+        app.logger.info(f"Link preview file already exists: {name}")
+        return name
+
     latent1 = fromLatentProxy.getLatent()
     latent2 = toLatentProxy.getLatent()
     middleLatent = latent1 * 0.5 + latent2 * 0.5
@@ -404,6 +495,7 @@ def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
     draw.line([cwGap2-symbolSize, ch + eqH, cwGap2+symbolSize, ch + eqH], width=lineWidth, fill="black")
 
     previewIm.save(name, 'JPEG')
+    return name
 
 def get_from_latent(request):
     fromHash = request.args.get('from_value')
@@ -519,22 +611,27 @@ def webp_generation():
 
 @app.route('/api/linkpreview/', methods=['GET'])
 def linkpreview_generation():
-    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputLinkPreviews"), exist_ok=True)
-
     fromLatentProxy = get_from_latent(request)
     toLatentProxy = get_to_latent(request)
 
     preview_width = defaultedRequestInt(request, 'width', 1200, 100, 2400)
 
-
-    name = os.path.join(os.getcwd(), "checkfacedata", "outputLinkPreviews",
-                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} x{preview_width}.jpg")
-    if not os.path.isfile(name):
-        generate_link_preview(fromLatentProxy, toLatentProxy, preview_width, name)
-    else:
-        app.logger.info(f"Link preview file already exists: {name}")
-
+    name = generate_link_preview(fromLatentProxy, toLatentProxy, preview_width)
     return send_file(name, mimetype='image/jpg')
+
+@app.route('/api/morphframe/', methods=['GET'])
+def morphframe():
+    fromLatentProxy = get_from_latent(request)
+    toLatentProxy = get_to_latent(request)
+
+    image_dim = getRequestedImageDim(request)
+    num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
+    framenum = defaultedRequestInt(request, 'frame_num', 0, 0, num_frames)
+    isLinear = argIsTrue(request, 'linear')
+    framenums = [framenum]
+    filenames = generate_morph_frames(fromLatentProxy, toLatentProxy, num_frames, image_dim, framenums, isLinear)
+
+    return send_file(filenames[0], mimetype='image/jpg')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 def getextension(filename):
