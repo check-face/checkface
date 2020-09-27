@@ -14,6 +14,7 @@ import PIL.Image
 import PIL.ImageDraw
 import PIL
 import sys
+import tempfile
 import re
 import pickle
 import numpy as np
@@ -115,7 +116,7 @@ def toImages(Gs, latents, image_size):
             network = "synthesis component"
         diff = time.time() - start
 
-        app.logger.info(f"Took {diff:.2f} seconds to run {network}")
+        app.logger.info(f"Took {diff:.2f} seconds to run {network} on {len(latents)} latents")
         pilImages = [PIL.Image.fromarray(img, 'RGB') for img in images]
         if image_size:
             pilImages = [img.resize(
@@ -209,6 +210,8 @@ imagesGenCounter = Counter('image_generating', 'Number of images generated')
 jobQueue = Gauge('job_queue', 'Number of jobs in the queue')
 generatorNetworkTime = Summary('generator_network_seconds', 'Time taken to run \
                                 the generator network')
+ffmpegTimeSummary = Summary('ffmpeg_processing_seconds',
+                             'Time spent running ffmpeg')
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
@@ -355,11 +358,14 @@ def getFramesMorphdir(fromName, toName, num_frames, image_dim, isLinear):
                     f"{shape} n{num_frames}x{image_dim}")
     return parentMorphdir, framesdir
 
-def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, image_dim, framenums, isLinear):
+def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, image_dim, framenums, isLinear = False):
     """
     For each specified frame num, checks if the frame exists
     and if necessary generates and saves it. Returns the filenames
     of all required frames, in the same order as framenums.
+    Note: does tricks to deduplucate where two frames use same file and
+    may have extended frames outside the normal range, so in general you CAN'T
+    rely on using glob for ffmpeg for example
 
     If isLinear, linearly morphs from start to end (inclusive)
     Else, trig morphs from start to end and back (last frame is one frame away from start) (deduplicates if even num_frames)
@@ -377,6 +383,7 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
         framenums = [ i if i < num_frames / 2 or i >= num_frames else num_frames - i for i in framenums ]
         
     frames = [ (i, os.path.join(framesdir, f"img{i:03d}.jpg")) for i in framenums ]
+    filenames = [ fName for i, fName in frames ]
     deduplicateBy = set() # keep all filenames in frames to return, but don't generate same file multiple times
     latent1 = fromLatentProxy.getLatent()
     latent2 = toLatentProxy.getLatent()
@@ -386,6 +393,13 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
         vals = [(math.sin(i + math.pi/2) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
 
     jobs = []
+    if all(os.path.isfile(fName) for fName in filenames):
+        if len(filenames) == 1:
+            app.logger.info(f"Frame already exists: {fName}")
+        else:
+            app.logger.info(f"All required frames already exist in {framesdir}")
+        return filenames
+
     for i, fName in frames:
         if os.path.isfile(fName):
             app.logger.info(f"Frame already exists: {fName}")
@@ -407,35 +421,18 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
                 TO_IMAGE = os.path.join(parentMorphdir, "TO.jpg")
                 if not os.path.isfile(TO_IMAGE):
                     jobs.append((job, TO_IMAGE, 1024))
+    if len(jobs) > 0:
+        start = time.time()
+        imgs = [(job.wait_for_img(30), fName, dim) for (job, fName, dim) in jobs]
+        diff = time.time() - start
+        app.logger.info(f"Waited {diff:.2f} seconds for {len(imgs)} morph frames")
 
-    imgs = [(job.wait_for_img(30), fName, dim) for (job, fName, dim) in jobs]
+        for img, fName, dim in imgs:
+            if not img:
+                raise Exception("Generating image failed or timed out")
+            img.resize((dim, dim), PIL.Image.ANTIALIAS).save(fName, 'JPEG')
 
-    for img, fName, dim in imgs:
-        if not img:
-            raise Exception("Generating image failed or timed out")
-        img.resize((dim, dim), PIL.Image.ANTIALIAS).save(fName, 'JPEG')
-
-    return [ fName for i, fName in frames ]
-
-def generate_morph(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, image_dim, name):
-    latent1 = fromLatentProxy.getLatent()
-    latent2 = toLatentProxy.getLatent()
-
-    vals = [(math.sin(i + math.pi/2) + 1) * 0.5 for i in np.linspace(0, 2 * math.pi, num_frames, False)]
-    latents = [latent1 * i + latent2 * (1 - i) for i in vals]
-
-    jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} f{i}") for i, latent in enumerate(latents)]
-    for job in jobs:
-        q.put(job)
-        jobQueue.inc(1)
-
-    imgs = [job.wait_for_img(30) for job in jobs]
-
-    for img in imgs:
-        if not img:
-            raise Exception("Generating image failed or timed out")
-
-    return [ img.resize((image_dim, image_dim), PIL.Image.ANTIALIAS) for img in imgs ]
+    return filenames
 
 def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, preview_width):
     parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
@@ -509,6 +506,35 @@ def get_to_latent(request):
     toGuidStr = request.args.get('to_guid')
     return useHashOrSeedOrGuid(toHash, toSeedStr, toGuidStr)
 
+def ffmpeg_generate_morph_file(filenames, outputFileName, fps=16, kbitrate=2400):
+    """
+    Take a series of input image filenames and generates a morph file based on the outputFileName extension.
+    """
+    with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as concatfile:
+        concatfile.writelines([ f"file '{filename}'\n" for filename in filenames])
+        concatfile.close()
+        try:
+            with ffmpegTimeSummary.time():
+                start = time.time()
+                _, kind = os.path.splitext(outputFileName)
+                if kind == ".gif":
+                    command = f"ffmpeg -r {str(fps)} -f concat -safe 0 -i \"{concatfile.name}\" -filter_complex \"[0:v] split [a][b];[a] palettegen [p];[b][p] paletteuse\" -y \"{outputFileName}\""
+                elif kind ==".mp4":
+                    command = f"ffmpeg -r {str(fps)} -f concat -safe 0 -i \"{concatfile.name}\" -b {str(kbitrate)}k -vcodec libx264 -y \"{outputFileName}\""
+                elif kind == ".webp":
+                    command = f"ffmpeg -r {str(fps)} -f concat -safe 0 -i \"{concatfile.name}\" -vcodec libwebp -loop 0 -y \"{outputFileName}\""
+                else:
+                    raise Exception(f"Unnown kind \"{kind}\" for ffmpeg morph file")
+
+                app.logger.info(command)
+                os.system(command)
+
+                diff = time.time() - start
+                app.logger.info(f"Took {diff:.2f} seconds running ffmpeg on {len(filenames)} frames for {outputFileName}")
+        finally:
+            os.unlink(concatfile.name)
+            pass
+
 @app.route('/api/gif/', methods=['GET'])
 def gif_generation():
     os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputGifs"), exist_ok=True)
@@ -520,30 +546,22 @@ def gif_generation():
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
 
-    name = os.path.join(os.getcwd(), "checkfacedata", "outputGifs",
-                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}.gif")
+    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    GIFsDir = os.path.join(parentMorphdir, "GIFs")
+    name = os.path.join(GIFsDir, f"n{num_frames}f{fps}x{image_dim}.gif")
+
     if not os.path.isfile(name):
-        images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
-        images[0].save(name, save_all=True, append_images=images[1:], duration=1000/fps, loop=0) # save as gif
+        os.makedirs(GIFsDir, exist_ok=True)
+        framenums = np.arange(num_frames)
+        filenames = generate_morph_frames(fromLatentProxy, toLatentProxy, num_frames, image_dim, framenums, isLinear=False)
+        ffmpeg_generate_morph_file(filenames, name)
     else:
-        app.logger.info(f"Gif file already exists: {name}")
+        app.logger.info(f"GIF file already exists: {name}")
 
     return send_file(name, mimetype='image/gif')
 
-def generate_mp4(images, fps, kbitrate, name):
-    framesdir = os.path.join(os.getcwd(), "checkfacedata", "morphFrames", name + " - frames")
-    os.makedirs(framesdir, exist_ok=True)
-    for i, img in enumerate(images):
-        img.save(os.path.join(framesdir, f"img{i:03d}.jpg"), 'JPEG')
-
-    app.logger.info(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
-    os.system(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -b {str(kbitrate)}k -vcodec libx264 -y \"{name}\"")
-
-
 @app.route('/api/mp4/', methods=['GET'])
 def mp4_generation():
-    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputMp4s"), exist_ok=True)
-
     fromLatentProxy = get_from_latent(request)
     toLatentProxy = get_to_latent(request)
 
@@ -552,12 +570,15 @@ def mp4_generation():
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
     kbitrate = defaultedRequestInt(request, 'kbitrate', 2400, 100, 20000)
 
-    name = os.path.join(os.getcwd(), "checkfacedata", "outputMp4s",
-                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
+    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    mp4sDir = os.path.join(parentMorphdir, "mp4s")
+    name = os.path.join(mp4sDir, f"n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
 
     if not os.path.isfile(name):
-        images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
-        generate_mp4(images, fps, kbitrate, name)
+        os.makedirs(mp4sDir, exist_ok=True)
+        framenums = np.arange(num_frames)
+        filenames = generate_morph_frames(fromLatentProxy, toLatentProxy, num_frames, image_dim, framenums, isLinear=False)
+        ffmpeg_generate_morph_file(filenames, name, fps=fps, kbitrate=kbitrate)
     else:
         app.logger.info(f"MP4 file already exists: {name}")
 
@@ -576,21 +597,8 @@ def mp4_generation():
 
     return send_file(name, mimetype='video/mp4', conditional=True)
 
-
-def generate_webp(images, fps, name):
-    framesdir = os.path.join(os.getcwd(), "checkfacedata", "morphFrames", name + " - frames")
-    os.makedirs(framesdir, exist_ok=True)
-    for i, img in enumerate(images):
-        img.save(os.path.join(framesdir, f"img{i:03d}.jpg"), 'JPEG')
-
-    app.logger.info(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -vcodec libwebp -loop 0 -y \"{name}\"")
-    os.system(f"ffmpeg -r {str(fps)} -i \"{framesdir}/img%03d.jpg\" -vcodec libwebp -loop 0 -y \"{name}\"")
-
-
 @app.route('/api/webp/', methods=['GET'])
 def webp_generation():
-    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputWebPs"), exist_ok=True)
-
     fromLatentProxy = get_from_latent(request)
     toLatentProxy = get_to_latent(request)
 
@@ -598,12 +606,15 @@ def webp_generation():
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
 
-    name = os.path.join(os.getcwd(), "checkfacedata", "outputWebPs",
-                        f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{fps}x{image_dim}.webp")
+    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    webPsDir = os.path.join(parentMorphdir, "webPs")
+    name = os.path.join(webPsDir, f"n{num_frames}f{fps}x{image_dim}.webp")
 
     if not os.path.isfile(name):
-        images = generate_morph(fromLatentProxy, toLatentProxy, num_frames, image_dim, name)
-        generate_webp(images, fps, name)
+        os.makedirs(webPsDir, exist_ok=True)
+        framenums = np.arange(num_frames)
+        filenames = generate_morph_frames(fromLatentProxy, toLatentProxy, num_frames, image_dim, framenums, isLinear=False)
+        generate_webp(filenames, name, fps=fps)
     else:
         app.logger.info(f"WEBP file already exists: {name}")
 
