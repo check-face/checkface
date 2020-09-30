@@ -345,6 +345,7 @@ def hashlatentdata():
     return jsonify(data)
 
 outputMorphsDir = os.path.join(os.getcwd(), "checkfacedata", "outputMorphs")
+assetsDir = os.path.join(os.getcwd(), "checkfacedata", "assets")
 os.makedirs(outputMorphsDir, exist_ok=True)
 
 def getParentMorphdir(fromName, toName):
@@ -471,6 +472,26 @@ def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
     sumFace = imgs[2].resize((sumDim, sumDim), PIL.Image.ANTIALIAS)
 
     previewIm = PIL.Image.new("RGB", (preview_width, preview_height), color = "white")
+
+    # add site assets if the exist
+    logoAsset = os.path.join(assetsDir, "preview-logo.png")
+    sitenameAsset = os.path.join(assetsDir, "preview-sitename.png")
+    if os.path.isfile(logoAsset):
+        logoImg = PIL.Image.open(logoAsset)
+        logoHeight = int(150 * preview_height/standardHeight)
+        logoWidth = int(logoImg.size[0] * logoHeight / logoImg.size[1])
+        resizedLogo = logoImg.resize((logoWidth, logoHeight), PIL.Image.ANTIALIAS)
+        previewIm.paste(resizedLogo, (0, 0))
+    if os.path.isfile(sitenameAsset):
+        sitenameImg = PIL.Image.open(sitenameAsset)
+        sitenameHeight = int(165 * preview_height/standardHeight)
+        sitenameWidth = int(sitenameImg.size[0] * sitenameHeight / sitenameImg.size[1])
+        resizedSitename = sitenameImg.resize((sitenameWidth, sitenameHeight), PIL.Image.ANTIALIAS)
+        sitenameYPos = int(0.5 * (preview_height - faceDim)) + faceDim
+        previewIm.paste(resizedSitename, (0, sitenameYPos))
+
+
+    # add images
     gapsSize = (preview_width - faceDim - faceDim - sumDim) * 0.5 # 2 gaps for plus and equals
     previewIm.paste(face1, (0, int(0.5 * (preview_height - faceDim))))
     previewIm.paste(face2, (int(faceDim + gapsSize), int(0.5 * (preview_height - faceDim))))
