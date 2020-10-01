@@ -396,7 +396,7 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
     jobs = []
     if all(os.path.isfile(fName) for fName in filenames):
         if len(filenames) == 1:
-            app.logger.info(f"Frame already exists: {fName}")
+            app.logger.info(f"Frame already exists: {filenames[0]}")
         else:
             app.logger.info(f"All required frames already exist in {framesdir}")
         return filenames
