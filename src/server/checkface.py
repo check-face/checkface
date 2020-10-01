@@ -51,12 +51,8 @@ synthesis_kwargs = dict(output_transform=dict(
 GsInputDim = 512 # updated in worker
 
 
-def fromSeed(seed, dim=0, dimOffset=0):
-    qlat = np.random.RandomState(seed).randn(1, GsInputDim)[0]
-    if dimOffset != 0:
-        qlat[dim] += dimOffset
-    return qlat
-
+def fromSeed(seed):
+    return np.random.RandomState(seed).randn(1, GsInputDim)[0]
 
 dlatent_avg = ""
 
@@ -125,11 +121,6 @@ def toImages(Gs, latents, image_size):
 
         return pilImages
 
-def hashToSeed(hash):
-    if not hash:
-        hash = ''
-    return int(hashlib.sha256(hash.encode('utf-8')).hexdigest(), 16) % 10**8
-
 class LatentProxy:
     '''
     This is an Abstract Base Class for both seeds and guids 
@@ -158,10 +149,28 @@ class LatentBySeed(LatentProxy):
         return self.seed
     
     
-class LatentByHashString(LatentBySeed):
-    def __init__(self, hashstr: str):
-        super().__init__(seed=hashToSeed(hashstr))
-        self.hashstr = hashstr
+class LatentByTextValue(LatentProxy):
+    def __init__(self, textValue: str):
+        if not textValue:
+            textValue = ''
+        self.textValue = textValue
+        h = hashlib.sha256(textValue.encode('utf-8'))
+        self.hashhex = h.hexdigest()
+
+        # https://stackoverflow.com/a/36756272
+        # seed is an array of uint32
+        seed = np.frombuffer(h.digest(), dtype='uint32')
+        self.latent = fromSeed(seed)
+
+
+    def getLatent(self):
+        return self.latent
+    
+    def getName(self):
+        return f"hash-{str(self.hashhex)}"
+
+    def getHashHex(self):
+        return self.hashhex
         
 class LatentByGuid(LatentProxy):
     def __init__(self, guid: uuid.UUID):
@@ -273,10 +282,9 @@ def getRequestedImageDim(request):
     return defaultedRequestInt(request, 'dim', default_image_dim, 10, 1024)
 
 def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
-    os.makedirs("outputImages", exist_ok=True)
-
-    name = os.path.join(os.getcwd(), "checkfacedata", "outputImages",
-                        f"{latentProxy.getName()}_{image_dim}.jpg")
+    imgsDir = os.path.join(os.getcwd(), "checkfacedata", "outputImages")
+    os.makedirs(imgsDir, exist_ok=True)
+    name = os.path.join(imgsDir, f"{latentProxy.getName()}_{image_dim}.jpg")
     if not os.path.isfile(name):
         job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
         q.put(job)
@@ -295,8 +303,8 @@ def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
     return send_file(name, mimetype='image/jpg')
 
 
-@app.route('/api/<string:hash>', methods=['GET'])
-def image_generation_legacy(hash):
+@app.route('/api/<string:textValue>', methods=['GET'])
+def image_generation_legacy(textValue):
     '''
     string as a type will accept anything without a slash
     path as a type would accept slashes as well
@@ -304,9 +312,9 @@ def image_generation_legacy(hash):
     https://flask.palletsprojects.com/en/1.0.x/quickstart/#variable-rules
 
     '''
-    return handle_generate_image_request(LatentByHashString(hash), 300)
+    return handle_generate_image_request(LatentByTextValue(textValue), 300)
 
-def useHashOrSeedOrGuid(hashstr: str, seedstr: str, guidstr: str):
+def useTextOrSeedOrGuid(textValue: str, seedstr: str, guidstr: str):
     if guidstr:
         guid = uuid.UUID(hex = guidstr)
         return LatentByGuid(guid)
@@ -317,14 +325,14 @@ def useHashOrSeedOrGuid(hashstr: str, seedstr: str, guidstr: str):
         except ValueError:
             raise ValueError("Seed must be a base 10 number")
 
-    # fallback on hash if nothing else
-    return LatentByHashString(hashstr)
+    # fallback on text value if nothing else
+    return LatentByTextValue(textValue)
 
 def getRequestLatent(request):
-    hashstr = request.args.get('value')
+    textValue = request.args.get('value')
     seedstr = request.args.get('seed')
     guidstr = request.args.get('guid')
-    return useHashOrSeedOrGuid(hashstr, seedstr, guidstr)
+    return useTextOrSeedOrGuid(textValue, seedstr, guidstr)
 
 
 @app.route('/api/face/', methods=['GET'])
@@ -341,6 +349,8 @@ def hashlatentdata():
     data = {"qlatent": latentProxy.getLatent().tolist()}
     if isinstance(latentProxy, LatentBySeed):
         data['seed'] = latentProxy.getSeed()
+    if isinstance(latentProxy, LatentByTextValue):
+        data['hash'] = latentProxy.getHashHex()
 
     return jsonify(data)
 
@@ -516,16 +526,16 @@ def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
     return name
 
 def get_from_latent(request):
-    fromHash = request.args.get('from_value')
+    fromTextValue = request.args.get('from_value')
     fromSeedStr = request.args.get('from_seed')
     fromGuidStr = request.args.get('from_guid')
-    return useHashOrSeedOrGuid(fromHash, fromSeedStr, fromGuidStr)
+    return useTextOrSeedOrGuid(fromTextValue, fromSeedStr, fromGuidStr)
 
 def get_to_latent(request):
-    toHash = request.args.get('to_value')
+    toTextValue = request.args.get('to_value')
     toSeedStr = request.args.get('to_seed')
     toGuidStr = request.args.get('to_guid')
-    return useHashOrSeedOrGuid(toHash, toSeedStr, toGuidStr)
+    return useTextOrSeedOrGuid(toTextValue, toSeedStr, toGuidStr)
 
 def ffmpeg_generate_morph_file(filenames, outputFileName, fps=16, kbitrate=2400):
     """
