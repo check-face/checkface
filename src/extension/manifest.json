@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Check Face",
   "description": "Putting a face to a name.",
-  "version": "1.2",
+  "version": "1.3",
   "content_scripts": [
     {
       "matches": [
