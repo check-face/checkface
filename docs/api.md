@@ -45,13 +45,15 @@ Use either `value`, `seed` or `guid` parameters to specify the face
 
 `guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
 
+`format` *optional* **string** if set to webp, returns a webp image. Defaults to jpg
+
 ### Returns
 
 An image
 
 ### Example
 
-[https://api.checkface.ml/api/face/?value=example&dim=500](https://api.checkface.ml/api/face/?value=example&dim=500)
+[https://api.checkface.ml/api/face/?value=example&dim=500&format=webp](https://api.checkface.ml/api/face/?value=example&dim=500&format=webp)
 
 ## /api/hashdata/
 

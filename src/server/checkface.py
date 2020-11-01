@@ -281,10 +281,13 @@ def defaultedRequestInt(request, param_name, default_val, min_val, max_val):
 def getRequestedImageDim(request):
     return defaultedRequestInt(request, 'dim', default_image_dim, 10, 1024)
 
-def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
+def handle_generate_image_request(latentProxy: LatentProxy, image_dim, isWebp):
     imgsDir = os.path.join(os.getcwd(), "checkfacedata", "outputImages")
     os.makedirs(imgsDir, exist_ok=True)
-    name = os.path.join(imgsDir, f"{latentProxy.getName()}_{image_dim}.jpg")
+    fileExt = "webp" if isWebp else "jpg"
+    fileFormat = "WEBP" if isWebp else "JPEG"
+    fileMimetype = "image/webp" if isWebp else "image/jpg"
+    name = os.path.join(imgsDir, f"{latentProxy.getName()}_{image_dim}.{fileExt}")
     if not os.path.isfile(name):
         job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
         q.put(job)
@@ -293,14 +296,14 @@ def handle_generate_image_request(latentProxy: LatentProxy, image_dim):
         if img:
             resized = img.resize(
                     (image_dim, image_dim), PIL.Image.ANTIALIAS)
-            resized.save(name, 'JPEG')
+            resized.save(name, fileFormat)
         else:
             raise Exception("Generating image failed or timed out")
 
 
     else:
         app.logger.info(f"Image file already exists: {name}")
-    return send_file(name, mimetype='image/jpg')
+    return send_file(name, mimetype=fileMimetype)
 
 
 @app.route('/api/<string:textValue>', methods=['GET'])
@@ -312,7 +315,7 @@ def image_generation_legacy(textValue):
     https://flask.palletsprojects.com/en/1.0.x/quickstart/#variable-rules
 
     '''
-    return handle_generate_image_request(LatentByTextValue(textValue), 300)
+    return handle_generate_image_request(LatentByTextValue(textValue), 300, False)
 
 def useTextOrSeedOrGuid(textValue: str, seedstr: str, guidstr: str):
     if guidstr:
@@ -334,13 +337,18 @@ def getRequestLatent(request):
     guidstr = request.args.get('guid')
     return useTextOrSeedOrGuid(textValue, seedstr, guidstr)
 
+def getRequestedFormat(request):
+    format = request.args.get('format', default='jpg').strip().lower()
+    return format
+    
 
 @app.route('/api/face/', methods=['GET'])
 def image_generation():
     with requestTimeSummary.time():
         latentProxy = getRequestLatent(request)
         image_dim = getRequestedImageDim(request)
-        return handle_generate_image_request(latentProxy, image_dim)
+        isWebp = getRequestedFormat(request) == "webp"
+        return handle_generate_image_request(latentProxy, image_dim, isWebp)
 
 
 @app.route('/api/hashdata/', methods=['GET'])
