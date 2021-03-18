@@ -77,14 +77,14 @@ def toDLat(Gs, lat, useTruncTrick=True):
     return lat
 
 
-def chooseQorDLat(latent1, latent2):
+def chooseQorDLat(Gs, latent1, latent2):
     latent1 = np.array(latent1)
     latent2 = np.array(latent2)
     if(latent1.shape[0] == 18 and latent2.shape[0] == 512):
-        latent2 = toDLat(latent2)
+        latent2 = toDLat(Gs, latent2)
 
     if(latent1.shape[0] == 512 and latent2.shape[0] == 18):
-        latent1 = toDLat(latent1)
+        latent1 = toDLat(Gs, latent1)
 
     return latent1, latent2
 
@@ -126,29 +126,29 @@ class LatentProxy:
     This is an Abstract Base Class for both seeds and guids 
     Represents something that can become a latent, be it a seed or a guid in the database
     '''
-    
-    def getLatent(self):
+
+    def getLatent(self, Gs = None):
         raise NotImplementedError()
-    
+
     def getName(self):
         raise NotImplementedError()
-    
+
 
 class LatentBySeed(LatentProxy):
     def __init__(self, seed: int):
         self.seed = seed
         self.latent = fromSeed(self.seed)
 
-    def getLatent(self):
+    def getLatent(self, Gs = None):
         return self.latent
-    
+
     def getName(self):
         return f"s{str(self.seed)}"
 
     def getSeed(self):
         return self.seed
-    
-    
+
+
 class LatentByTextValue(LatentProxy):
     def __init__(self, textValue: str):
         if not textValue:
@@ -163,15 +163,15 @@ class LatentByTextValue(LatentProxy):
         self.latent = fromSeed(seed)
 
 
-    def getLatent(self):
+    def getLatent(self, Gs = None):
         return self.latent
-    
+
     def getName(self):
         return f"hash-{str(self.hashhex)}"
 
     def getHashHex(self):
         return self.hashhex
-        
+
 class LatentByGuid(LatentProxy):
     def __init__(self, guid: uuid.UUID):
         self.guid = guid
@@ -182,17 +182,43 @@ class LatentByGuid(LatentProxy):
         if latentType == 'qlatent':
             self.latent = np.array(record['latent'])
         else:
-            raise NotImplementedError(f"Latent not implemented for type: {latentType}")
-    
-    def getLatent(self):
+            self.latent = np.array(record['latent'])
+            # raise NotImplementedError(f"Latent not implemented for type: {latentType}")
+
+    def getLatent(self, Gs = None):
         return self.latent
-    
+
     def getName(self):
         return f"GUID{str(self.guid)}"
 
+class LatentByLerp(LatentProxy):
+    def __init__(self, fromLat:LatentProxy, toLat:LatentProxy, p: float):
+        self.fromLat = fromLat
+        self.toLat = toLat
+        self.p = p
+
+    def getName(self):
+        return f"LERP_{p:.3f}_{self.fromLat.getName()}-{self.toLat.getName()}_LERP"
+
+    def getLatent(self, Gs):
+        latent1 = np.array(self.fromLat.getLatent(Gs))
+        latent2 = np.array(self.toLat.getLatent(Gs))
+        
+        if(latent1.shape[0] == 18 and latent2.shape[0] == 512):
+            if not hasattr(self.toLat, 'asDLat'):
+                self.toLat.asDLat = toDLat(Gs, latent2)
+            latent2 = self.toLat.asDLat
+
+        if(latent1.shape[0] == 512 and latent2.shape[0] == 18):
+            if not hasattr(self.fromLat, 'asDLat'):
+                self.fromLat.asDLat = toDLat(Gs, latent1)
+            latent1 = self.fromLat.asDLat
+        
+        return latent1 * (1 - self.p) + latent2 * self.p
+
 class GenerateImageJob:
-    def __init__(self, latent, name):
-        self.latent = latent
+    def __init__(self, latentproxy, name):
+        self.latentproxy = latentproxy
         self.name = name
         self.evt = threading.Event()
 
@@ -289,7 +315,7 @@ def handle_generate_image_request(latentProxy: LatentProxy, image_dim, isWebp):
     fileMimetype = "image/webp" if isWebp else "image/jpg"
     name = os.path.join(imgsDir, f"{latentProxy.getName()}_{image_dim}.{fileExt}")
     if not os.path.isfile(name):
-        job = GenerateImageJob(latentProxy.getLatent(), latentProxy.getName())
+        job = GenerateImageJob(latentProxy, latentProxy.getName())
         q.put(job)
         jobQueue.inc(1)
         img = job.wait_for_img(30)
@@ -340,7 +366,7 @@ def getRequestLatent(request):
 def getRequestedFormat(request):
     format = request.args.get('format', default='jpg').strip().lower()
     return format
-    
+
 
 @app.route('/api/face/', methods=['GET'])
 def image_generation():
@@ -354,7 +380,12 @@ def image_generation():
 @app.route('/api/hashdata/', methods=['GET'])
 def hashlatentdata():
     latentProxy = getRequestLatent(request)
-    data = {"qlatent": latentProxy.getLatent().tolist()}
+    latent = latentProxy.getLatent(Gs = None) # Only LatentByProxy needs Gs at the moment
+    if latent.shape[0] == 512:
+        ltype = "qlatent"
+    else:
+        ltype = "dlatent"
+    data = {ltype: latent.tolist()}
     if isinstance(latentProxy, LatentBySeed):
         data['seed'] = latentProxy.getSeed()
     if isinstance(latentProxy, LatentByTextValue):
@@ -400,12 +431,10 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
         # 0, 1, 2, 3, 4, 5, 4, 3, 2, 1
 
         framenums = [ i if i < num_frames / 2 or i >= num_frames else num_frames - i for i in framenums ]
-        
+
     frames = [ (i, os.path.join(framesdir, f"img{i:03d}.jpg")) for i in framenums ]
     filenames = [ fName for i, fName in frames ]
     deduplicateBy = set() # keep all filenames in frames to return, but don't generate same file multiple times
-    latent1 = fromLatentProxy.getLatent()
-    latent2 = toLatentProxy.getLatent()
     if isLinear:
         vals = np.linspace(1, 0, num_frames, True) # in reverse to work same as trig
     else:
@@ -423,14 +452,14 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
         if os.path.isfile(fName):
             app.logger.info(f"Frame already exists: {fName}")
         elif not (fName in deduplicateBy):
-            latent = latent1 * vals[i] + latent2 * (1 - vals[i])
-            job = GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{i}")
+            lerpLatentProxy = LatentByLerp(fromLatentProxy, toLatentProxy, 1 - vals[i])
+            job = GenerateImageJob(lerpLatentProxy, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{i}")
             q.put(job)
             jobQueue.inc(1)
             jobs.append((job, fName, image_dim))
             deduplicateBy.add(fName)
 
-            # also save full size FROM and TO images for posterity sake 
+            # also save full size FROM and TO images for posterity sake
             if i == 0:
                 FROM_IMAGE = os.path.join(parentMorphdir, "FROM.jpg")
                 if not os.path.isfile(FROM_IMAGE):
@@ -464,11 +493,9 @@ def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
         app.logger.info(f"Link preview file already exists: {name}")
         return name
 
-    latent1 = fromLatentProxy.getLatent()
-    latent2 = toLatentProxy.getLatent()
-    middleLatent = latent1 * 0.5 + latent2 * 0.5
-    latents = [latent1, latent2, middleLatent]
-    jobs = [GenerateImageJob(latent, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} preview{i}") for i, latent in enumerate(latents)]
+    middleLatentProxy = LatentByLerp(fromLatentProxy, toLatentProxy, 0.5)
+    latentProxies = [fromLatentProxy, toLatentProxy, middleLatentProxy]
+    jobs = [GenerateImageJob(latentProxy, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} preview{i}") for i, latentProxy in enumerate(latentProxies)]
     for job in jobs:
         q.put(job)
         jobQueue.inc(1)
@@ -749,7 +776,7 @@ def worker():
     while True:
         generateImageJobs = list(get_batch(int(os.getenv('GENERATOR_BATCH_SIZE', '10'))))
 
-        latents = np.array([job.latent for job in generateImageJobs])
+        latents = np.array([job.latentproxy.getLatent(Gs) for job in generateImageJobs])
 
         app.logger.info(f"Running jobs {[str(job) for job in generateImageJobs]}")
 
