@@ -92,7 +92,7 @@ Prerequisites to run the backend server
   - Nvidia drivers (eg. `sudo apt install nvidia-driver-435`)
   - [Nvidia Docker runtime](https://github.com/NVIDIA/nvidia-docker) (only supported on Linux, until HyperV adds GPU passthrough support)
 
-For running a backend we have used an AWS p3 instance on ECS, or g3s.xlarge via docker-machine for testing.
+If you don't have a suitable GPU, you canrun the backend with an AWS p3 instance on ECS, or g3s.xlarge via docker-machine for testing.
 
 The backend API is intented to be used behind a reverse proxy and trusts 1 `X-Forwarded-For` [using proxy_fix middleware](https://werkzeug.palletsprojects.com/en/1.0.x/middleware/proxy_fix/))
 
@@ -118,6 +118,9 @@ MongoDB is needed for features such as using guids with uploaded image or latent
 You can override the connection string using the environment variable.
 
 If using docker, note that you can't use docker-compose with nvidia GPUs. The compose file is only for reference. You will have to manually connect the checkface server to mongodb using a docker network.
+
+#### Image encoding
+Image encoding is currently done with a seperate internal API based on open source repos. We plan on merging it into one process rather than as a seperate container if possible. In the mean time, feel free to contact us or open an issue if you would like more information on how we currently do it.
 
 ### Project Webpage
 

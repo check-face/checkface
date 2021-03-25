@@ -66,7 +66,7 @@ Use either `value`, `seed` or `guid` parameters to specify the latent
 
 `seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
 
 ### Returns
 
@@ -98,13 +98,13 @@ You can mix and match values, seeds and guids.
 
 `frame_num` **int** between 0 to (num_frames-1) specify the specific frame to return
 
-`linear` **bool** set true for a linear morph from start to end rather than trig based
+`linear` **boolen** set true for a linear morph from start to end rather than trig based
 
 `from_value`, `to_value` *optional* **string** is any free text such as the hash of a file 
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
 
 ### Returns
 
@@ -134,7 +134,7 @@ You can mix and match values, seeds and guids.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
 
 ### Returns
 
@@ -166,7 +166,7 @@ This is useful when trying out the api in a browser manually.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
 
 `embed_html` *optional* **boolean** determines whether the response is embedded in an HTML document and loops
 
@@ -195,7 +195,7 @@ You can mix and match values, seeds and guids.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
 
 ### Returns
 
@@ -210,7 +210,11 @@ An image
 POST json to this endpoint to register a latent for later use.
 It returns a guid which can be used later in guid parameters.
 
+Use content type `application/json`.
+
 ### Body
+
+The body should be a json object:
 
 ```json
 {
@@ -219,13 +223,19 @@ It returns a guid which can be used later in guid parameters.
 }
 ```
 
-### Response 
+### Returns
 
 Plaintext guid referencing the latent
 
+For example
+
+```
+54fec40f-12c4-4333-951b-6bc1d2d074b9
+```
+
 ### Example 
 
-<details><summary>With curl</summary>
+<details><summary>With curl (click here to expand)</summary>
 <div markdown="1">
 
 ```bash
@@ -342,13 +352,35 @@ curl --location --request POST 'https://api.checkface.ml/api/registerlatent/' \
 </div>
 </details>
 
-## POST /api/recoverlatent/
+## POST /api/encodeimage/
 
-POST an image to this endpoint to recover latent for later use.
+POST an image to this endpoint to encode it as a latent.
 It returns a guid which can be used later in guid parameters.
+
+Use `multipart/form-data` content type.
+Make sure the file is a valid image file and is not too big.
+
+### Form Data
+
+`tryalign` **boolen** set true to try aligning the face
+
+`usrimg` **file**  an image file
+
+### Returns
+
+Json object containing the guid and whether or not it aligned the face
+
+```
+{"did_align":false,"guid":"54fec40f-12c4-4333-951b-6bc1d2d074b9"}
+```
+
+### Example
+
+[https://api.checkface.ml/api/encodeimage/](https://api.checkface.ml/api/encodeimage/)
 
 <script>
 (async function() {
+    // Get a hash of the source for this page to make a checkface for this page
     let resp = await fetch(window.location.href)
     const digest = await crypto.subtle.digest("SHA-256", await resp.arrayBuffer());
     const hashArray = Array.from(new Uint8Array(digest));                     // convert buffer to byte array
