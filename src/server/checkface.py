@@ -27,7 +27,8 @@ import pymongo
 import uuid
 import logging
 np.set_printoptions(threshold=np.inf)
-client = pymongo.MongoClient("mongodb://root:example@db")
+mongodb_conn_str = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://root:example@db")
+client = pymongo.MongoClient(mongodb_conn_str)
 db = client.test
 
 
@@ -759,7 +760,10 @@ def get_batch(batchsize):
 
 
 def worker():
-    dnnlib.tflib.init_tf()
+    tf_init_options = None
+    if os.getenv('LOW_GPU_MEM', 'False').lower() in ['true', '1']:
+        tf_init_options = { 'gpu_options.per_process_gpu_memory_fraction': 0.75, 'gpu_options.experimental.use_unified_memory': True }
+    dnnlib.tflib.init_tf(tf_init_options)
     Gs = fetch_model()
     global dlatent_avg
     dlatent_avg = Gs.get_var('dlatent_avg')

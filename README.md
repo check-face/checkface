@@ -94,7 +94,7 @@ Prerequisites to run the backend server
 
 For running a backend we have used an AWS p3 instance on ECS, or g3s.xlarge via docker-machine for testing.
 
-**Build and run docker image**
+#### Build and run docker image
 ```console
 cd ./src/server
 docker build -t checkfaceapi .
@@ -102,6 +102,20 @@ docker run -d -p 8080:8080 -p 8000:8000 --gpus all --name checkfaceapi checkface
 ```
 
 The api is available on port 8080 and prometheus metrics on port 8000.
+
+You may want to mount `/app/checkfacedata` to save generated media.
+#### Environment variables
+
+ - `LOW_GPU_MEM` defaults to `false`. Set `true` to configure tf gpu options to work with less memory.
+ - `GENERATOR_BATCH_SIZE` defaults to `10`. Set to `4` or lower if running with less GPU mem or a lower end system.
+ - `MONGODB_CONNECTION_STRING` to override the connection string for mongodb.
+
+#### MongoDB
+MongoDB is needed for features such as using guids with uploaded image or latents. The default connection string is set for use with a container named `db` in a docker network.
+
+You can override the connection string using the environment variable.
+
+If using docker, note that you can't use docker-compose with nvidia GPUs. The compose file is only for reference. You will have to manually connect the checkface server to mongodb using a docker network.
 
 ### Project Webpage
 
@@ -111,7 +125,9 @@ Simple pure Javascript based bootstrap webpage. Upload to anything that serves s
 
 ### Chrome Extension
 
-TODO
+1. Open `chrome://extensions`
+2. Enable "Developer mode"
+3. Load unpacked and select the folder `src/extension`
 
 ### Windows Desktop Application
 
