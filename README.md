@@ -94,6 +94,8 @@ Prerequisites to run the backend server
 
 For running a backend we have used an AWS p3 instance on ECS, or g3s.xlarge via docker-machine for testing.
 
+The backend API is intented to be used behind a reverse proxy and trusts 1 `X-Forwarded-For` [using proxy_fix middleware](https://werkzeug.palletsprojects.com/en/1.0.x/middleware/proxy_fix/))
+
 #### Build and run docker image
 ```console
 cd ./src/server

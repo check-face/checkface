@@ -22,6 +22,7 @@ import queue
 import hashlib
 from flask import send_file, request, jsonify, render_template
 import flask_cors
+from werkzeug.middleware.proxy_fix import ProxyFix
 from prometheus_client import start_http_server, Summary, Gauge, Counter
 import pymongo
 import uuid
@@ -250,6 +251,7 @@ ffmpegTimeSummary = Summary('ffmpeg_processing_seconds',
                              'Time spent running ffmpeg')
 
 app = flask.Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 app.config["DEBUG"] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MiB
 flask_cors.CORS(app) # enable CORS so can fetch content
