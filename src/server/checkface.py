@@ -22,12 +22,15 @@ import queue
 import hashlib
 from flask import send_file, request, jsonify, render_template
 import flask_cors
+from werkzeug.middleware.proxy_fix import ProxyFix
 from prometheus_client import start_http_server, Summary, Gauge, Counter
 import pymongo
 import uuid
 import logging
+import requests
 np.set_printoptions(threshold=np.inf)
-client = pymongo.MongoClient("mongodb://root:example@db")
+mongodb_conn_str = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://root:example@db")
+client = pymongo.MongoClient(mongodb_conn_str)
 db = client.test
 
 
@@ -249,6 +252,7 @@ ffmpegTimeSummary = Summary('ffmpeg_processing_seconds',
                              'Time spent running ffmpeg')
 
 app = flask.Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 app.config["DEBUG"] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MiB
 flask_cors.CORS(app) # enable CORS so can fetch content
@@ -265,22 +269,29 @@ def status():
 def home():
     return 'It works'
 
-@app.route('/api/registerlatent/', methods=['POST'])
-def registerLatent():
-    data = request.json
+def registerLatent(latentArray):
     try:
-        latent_data = np.array(data['latent']).astype('float32', casting='same_kind')
+        latent_data = np.array(latentArray).astype('float32', casting='same_kind')
     except TypeError:
-        return flask.Response('Latent must be array of floats', status=400)
+        return (False, 'Latent must be array of floats')
     if latent_data.shape == (512,):
         latent_type = 'qlatent'
     elif latent_data.shape == (18, 512):
         latent_type = 'dlatent'
     else:
-        return flask.Response('Latent must be array of shape (512,) or (18, 512)', status=400)
+        return (False, 'Latent must be array of shape (512,) or (18, 512)')
     guid = uuid.uuid4()
     db.latents.insert_one({'_id':str(guid), 'type': latent_type, 'latent':latent_data.tolist()})
-    return str(guid)
+    return (True, str(guid))
+
+@app.route('/api/registerlatent/', methods=['POST'])
+def registerLatentApi():
+    latentArray = request.json['latent']
+    (didSucceed, msg) = registerLatent(latentArray)
+    if didSucceed:
+        return msg
+    else:
+        return flask.Response(msg, status=400)
 
 # such a queue
 q = queue.Queue()
@@ -710,38 +721,65 @@ def morphframe():
 
     return send_file(filenames[0], mimetype='image/jpg')
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-def getextension(filename):
-    return filename.rsplit('.', 1)[1].lower()
-def allowed_file(filename):
-    return '.' in filename and \
-           getextension(filename) in ALLOWED_EXTENSIONS
+def encodeRequestKey(imgFile, tryAlign: bool):
+    # tryAlign not didAlign, because we want to cache against the request not the result,
+    # as we assume the same request will have the same result
+    h = hashlib.sha256(imgFile)
+    key = h.hexdigest() + f"-tryalign={str(tryAlign)}"
 
-@app.route('/api/uploadimage/', methods=['POST'])
-def uploadimage():
+    return key
+
+def getEncodedImagesRecord(requestKey):
+    return db.encodedimages.find_one({'_id': requestKey})
+
+def setEncodedImagesRecord(requestKey, guid, didAlign):
+    app.logger.info(f"Setting encoded image record for {{'guid': guid', 'did_align': {str(didAlign)}}}")
+    db.encodedimages.insert_one({'_id':requestKey, 'guid': guid, 'did_align': didAlign })
+
+@app.route('/api/encodeimage/', methods=['POST'])
+def encodeimage():
     file = request.files['usrimg']
     if not file:
         return flask.Response('No file uploaded for usrimg', status=400)
-    elif not allowed_file(file.filename):
-        return flask.Response(f'File extension must be in {ALLOWED_EXTENSIONS}', status=400)
-    else:
-        guid = uuid.uuid4()
-        basename = f"{str(guid)}.{getextension(file.filename)}"
-        filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", basename)
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        file.save(filename)
-        try:
-            db.uploadedImages.insert_one({'_id':str(guid), 'type': "rawupload", 'filename': basename})
-        except pymongo.errors.PyMongoError:
-            return flask.Response('Database error', status=500)
-        return str(guid)
 
-@app.route('/api/uploadimage/', methods=['GET'])
-def getmyface():
-    imgguid = request.args.get('imgguid')
-    record = db.uploadedImages.find_one({'_id': imgguid})
-    filename = os.path.join(os.getcwd(), "checkfacedata", "uploadedImages", record["filename"])
-    return send_file(filename)
+    tryAlign = flask.request.form.get('tryalign', 'false')
+    tryAlign = tryAlign.lower() == 'true'
+    imgFile = file.read()
+
+
+    # Cache encoding requests by a hash of the image file and value of tryAlign
+    requestKey = encodeRequestKey(imgFile, tryAlign)
+    existingRecord = getEncodedImagesRecord(requestKey)
+    if existingRecord:
+        app.logger.info(f"Image encoding for {file.filename} with tryalign={str(tryAlign)} already exists!")
+        return flask.jsonify({ 'guid': existingRecord['guid'], 'did_align': existingRecord['did_align'] })
+
+    app.logger.info(f"Encoding image {file.filename} with tryalign={str(tryAlign)}")
+
+    (files, data) = ({ 'usrimg': imgFile }, { 'tryalign': tryAlign })
+    resp = requests.post("http://encoderapi:8080/api/encodeimage/", files=files, data=data)
+
+    if not resp.ok:
+        return flask.Response('Encoding error', status=500)
+
+    respData = resp.json()
+    latentArray = respData['dlatent']
+    didAlign = respData['did_align']
+
+    (didSucceed, msg) = registerLatent(latentArray)
+    if didSucceed:
+        guid = msg
+        setEncodedImagesRecord(requestKey, guid, didAlign)
+        return flask.jsonify({ 'guid': guid, 'did_align': didAlign })
+    else:
+        return flask.Response(msg, status=400)
+
+@app.route('/api/encodeimage/', methods=['GET'])
+def encodeimageform():
+    response = flask.Response(render_template('encode.html'))
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
 
 
 @app.route('/api/queue/', methods=['GET'])
@@ -759,7 +797,10 @@ def get_batch(batchsize):
 
 
 def worker():
-    dnnlib.tflib.init_tf()
+    tf_init_options = None
+    if os.getenv('LOW_GPU_MEM', 'False').lower() in ['true', '1']:
+        tf_init_options = { 'gpu_options.per_process_gpu_memory_fraction': 0.75, 'gpu_options.experimental.use_unified_memory': True }
+    dnnlib.tflib.init_tf(tf_init_options)
     Gs = fetch_model()
     global dlatent_avg
     dlatent_avg = Gs.get_var('dlatent_avg')
