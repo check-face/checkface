@@ -20,16 +20,6 @@ With the advent of hyper-realistic Style transfer GAN's like [Nvidia's StyleGAN2
 ![CheckFace Face](/docs/assets/images/face.jpg)  
 *This generated face is an example of what you could expect to see next to your file's checksum or your git commit sha.*
 
-## How to use CheckFace
-
-First, use the [Chrome Extension](https://chrome.google.com/webstore/detail/check-face/pbfneacmjmcjdbeonggmoanjpaklahfk) to generate the face for the hash in a web environment as is shown  
-![Download Checkface](/docs/assets/images/screenshots/download.gif)
-
-Once downloaded, verify the CheckFace by using the [Context-Menu Extension](https://github.com/check-face/checkface/releases) to generate another checkface as shown below  
-![Download Checkface](/docs/assets/images/screenshots/verify.gif)
-
-You should already know if they're the same! EASY
-
 ## Our Stack
    - [Nvidia StyleGAN2](https://github.com/NVlabs/stylegan2)
      - Tensorflow
@@ -38,14 +28,12 @@ You should already know if they're the same! EASY
    - Flask
    - GitHub Pages
    - Chrome Web Extension
-   - Winforms Application
    - CloudFlare
 
 
 ## Quickstart
 
  - **Chrome Extension** Context Menu
- - **Electron App** Context Menu
  - **Backend API** running a Dockerized Nvidia Stylegan2 on Flask
  - **Project Webpage**
 
@@ -66,19 +54,6 @@ Click the LOAD UNPACKED button and select the extension directory.
 Ta-da! The extension has been successfully installed. Because no icons were included in the manifest, a generic toolbar icon will be created for the extension.
 
 (Sourced: [Chrome Developer](https://developer.chrome.com/extensions/getstarted))
-
-### Windows Explorer File Context Menu
-
-Download and install the latest release.
-Right click any file and choose from a number of hash algorithms to see its checkface.
-We recommend using SHA256.
-
-![using explorer file context menu](/docs/assets/images/screenshots/explorer-context-menu.jpg)
-![windows desktop app](/docs/assets/images/screenshots/checkface-dotnet-example.jpg)
-
-### Electron App
-
-Build and run from source only at the moment.
 
 ### Backend API
 
@@ -112,30 +87,6 @@ Simple pure Javascript based bootstrap webpage. Upload to anything that serves s
 ### Chrome Extension
 
 TODO
-
-### Windows Desktop Application
-
-Open `src/dotnet-windows/checkface-dotnet.sln` in Visual Studio.
-
-To use as explorer shell extension, you will need to [sign the assembly](https://docs.microsoft.com/en-us/visualstudio/ide/managing-assembly-and-manifest-signing?view=vs-2019#how-to-sign-an-assembly-in-visual-studio).
-
-Use [SharpShell ServerManager](https://github.com/dwmkerr/sharpshell/releases) to load the project output `checkface-dotnet.dll` in a test shell.
-
-### Electron App
-
-```console
-cd ./src/electron
-yarn install
-yarn run dev ./README.md
-```
-
-Build installer using
-
-```console
-yarn run build
-```
-
-Help needed to set up auto updating and registering in file context menu.
 
 ### Backend API
 
