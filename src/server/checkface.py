@@ -614,8 +614,6 @@ def ffmpeg_generate_morph_file(filenames, outputFileName, fps=16, kbitrate=2400)
 
 @app.route('/api/gif/', methods=['GET'])
 def gif_generation():
-    os.makedirs(os.path.join(os.getcwd(), "checkfacedata", "outputGifs"), exist_ok=True)
-
     fromLatentProxy = get_from_latent(request)
     toLatentProxy = get_to_latent(request)
 
@@ -631,7 +629,7 @@ def gif_generation():
         os.makedirs(GIFsDir, exist_ok=True)
         framenums = np.arange(num_frames)
         filenames = generate_morph_frames(fromLatentProxy, toLatentProxy, num_frames, image_dim, framenums, isLinear=False)
-        ffmpeg_generate_morph_file(filenames, name)
+        ffmpeg_generate_morph_file(filenames, name, fps=fps)
     else:
         app.logger.info(f"GIF file already exists: {name}")
 
@@ -691,7 +689,7 @@ def webp_generation():
         os.makedirs(webPsDir, exist_ok=True)
         framenums = np.arange(num_frames)
         filenames = generate_morph_frames(fromLatentProxy, toLatentProxy, num_frames, image_dim, framenums, isLinear=False)
-        generate_webp(filenames, name, fps=fps)
+        ffmpeg_generate_morph_file(filenames, name, fps=fps)
     else:
         app.logger.info(f"WEBP file already exists: {name}")
 
