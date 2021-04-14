@@ -116,10 +116,11 @@ An image
 
 
 ## /api/gif/
+## /api/webp/
 
 
-Creates a gif morphing between two images.
-Use either `from_*` and `to_*` parameters to specify the start and end points of the gif.
+Creates a gif or animated webp morphing between two images.
+Use either `from_*` and `to_*` parameters to specify the start and end points of the morph.
 You can mix and match values, seeds and guids.
 
 ### Query Parameters
@@ -138,11 +139,12 @@ You can mix and match values, seeds and guids.
 
 ### Returns
 
-A gif
+A gif or animated webp
 
-### Example
+### Examples
 
-[https://api.checkface.ml/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.checkface.ml/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
+1. [https://api.checkface.ml/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.checkface.ml/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
+2. [https://api.checkface.ml/api/webp/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.checkface.ml/api/webp/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
 
 ## /api/mp4/
 
