@@ -255,6 +255,7 @@ app = flask.Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 app.config["DEBUG"] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MiB
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600 * 24 * 7 # 1 week
 flask_cors.CORS(app) # enable CORS so can fetch content
 
 logging.basicConfig(level=logging.INFO)
