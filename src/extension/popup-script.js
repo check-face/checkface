@@ -8,6 +8,6 @@ chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     let encoded = encodeURIComponent(value);
 
 
-    document.getElementById("checkfaceimg").src = `https://api.checkface.ml/api/face/?value=${encoded}&dim=300`
+    document.getElementById("checkfaceimg").src = `https://api.facemorph.me/api/face/?value=${encoded}&dim=300`
     document.getElementById("checkfacetext").innerText = value;
 });

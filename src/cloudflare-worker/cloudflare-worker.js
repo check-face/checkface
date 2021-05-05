@@ -10,7 +10,7 @@ addEventListener('fetch', event => {
       let prop = element.getAttribute("property")
       switch(prop) {
         case "og:image": {
-          let imgUrl = `https://api.checkface.ml/api/face/?value=${encodeURIComponent(this.value)}&dim=1024`
+          let imgUrl = `https://api.facemorph.me/api/face/?value=${encodeURIComponent(this.value)}&dim=1024`
           element.setAttribute('content', imgUrl)
           break;
         }
@@ -28,7 +28,7 @@ addEventListener('fetch', event => {
       this.value = value
     }
     element(element) {
-        let imgUrl = `https://api.checkface.ml/api/face/?value=${encodeURIComponent(this.value)}&dim=500`
+        let imgUrl = `https://api.facemorph.me/api/face/?value=${encodeURIComponent(this.value)}&dim=500`
         element.setAttribute('src', imgUrl)
     }
   }
@@ -75,10 +75,8 @@ addEventListener('fetch', event => {
   }
   
   async function handleRequest(req) {
-    //return await fetch("https://olisworld.com")
-    // console.log("serving request for " + req.url)
     let url = new URL(req.url)
-    url.hostname = "checkface.ml"
+    url.hostname = "checkface.facemorph.me"
     req = await replaceUrl(req, url.toString())
     let res = await fetch(req)
     // if(url.pathname = '/') {
