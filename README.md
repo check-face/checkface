@@ -57,9 +57,9 @@ Ta-da! The extension has been successfully installed. Because no icons were incl
 
 ### Backend API
 
-Request images at [api.checkface.ml/api/face?value=example&dim=300](https://api.checkface.ml/api/face?value=example&dim=300).
+Request images at [api.facemorph.me/api/face?value=example&dim=300](https://api.facemorph.me/api/face?value=example&dim=300).
 
-Documentation for endpoints available on api is available at https://checkface.ml/api
+Documentation for endpoints available on api is available at https://checkface.facemorph.me/api
 
 Prerequisites to run the backend server
 

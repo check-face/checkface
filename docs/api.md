@@ -18,7 +18,7 @@ layout: default
 
 # Using the CheckFace API
 
-The API is available at `https://api.checkface.ml/`
+The API is available at `https://api.facemorph.me/`
 
 You're in luck that it's not authenticated; it's an entirely open API!
 
@@ -53,7 +53,7 @@ An image
 
 ### Example
 
-[https://api.checkface.ml/api/face/?value=example&dim=500&format=webp](https://api.checkface.ml/api/face/?value=example&dim=500&format=webp)
+[https://api.facemorph.me/api/face/?value=example&dim=500&format=webp](https://api.facemorph.me/api/face/?value=example&dim=500&format=webp)
 
 ## /api/hashdata/
 
@@ -81,7 +81,7 @@ Json object with data about the latent used for the given value
 
 ### Example
 
-[https://api.checkface.ml/api/hashdata/?value=example](https://api.checkface.ml/api/hashdata/?value=example)
+[https://api.facemorph.me/api/hashdata/?value=example](https://api.facemorph.me/api/hashdata/?value=example)
 
 ## /api/morphframe/
 
@@ -112,7 +112,7 @@ An image
 
 ### Example
 
- [https://api.checkface.ml/api/morphframe/?from_value=example&to_value=yeet&frame_num=25&linear=true](https://api.checkface.ml/api/morphframe/?from_value=example&to_value=yeet&frame_num=25&linear=true)
+ [https://api.facemorph.me/api/morphframe/?from_value=example&to_value=yeet&frame_num=25&linear=true](https://api.facemorph.me/api/morphframe/?from_value=example&to_value=yeet&frame_num=25&linear=true)
 
 
 ## /api/gif/
@@ -143,8 +143,8 @@ A gif or animated webp
 
 ### Examples
 
-1. [https://api.checkface.ml/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.checkface.ml/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
-2. [https://api.checkface.ml/api/webp/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.checkface.ml/api/webp/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
+1. [https://api.facemorph.me/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.facemorph.me/api/gif/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
+2. [https://api.facemorph.me/api/webp/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.facemorph.me/api/webp/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
 
 ## /api/mp4/
 
@@ -178,8 +178,8 @@ If `embed_html=true`, returns an html document, otherwise returns an mp4 video.
 
 ### Examples
 
- 1. [https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
- 2. [https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80&embed_html=true](https://api.checkface.ml/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80&embed_html=true)
+ 1. [https://api.facemorph.me/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80](https://api.facemorph.me/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80)
+ 2. [https://api.facemorph.me/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80&embed_html=true](https://api.facemorph.me/api/mp4/?from_value=example&to_value=yeet&dim=400&fps=16&num_frames=80&embed_html=true)
 
 ## /api/linkpreview/
 
@@ -205,7 +205,7 @@ An image
 
 ### Example
 
- [https://api.checkface.ml/api/linkpreview/?from_value=example&to_value=yeet](https://api.checkface.ml/api/linkpreview/?from_value=example&to_value=yeet)
+ [https://api.facemorph.me/api/linkpreview/?from_value=example&to_value=yeet](https://api.facemorph.me/api/linkpreview/?from_value=example&to_value=yeet)
 
 ## POST /api/registerlatent/
 
@@ -241,7 +241,7 @@ For example
 <div markdown="1">
 
 ```bash
-curl --location --request POST 'https://api.checkface.ml/api/registerlatent/' \
+curl --location --request POST 'https://api.facemorph.me/api/registerlatent/' \
 --header 'Content-Type: application/json' \
 --data-raw '{
 	"latent": [ 5, -0.33087015,  2.43077119, -0.25209213,  0.10960984,
@@ -378,7 +378,7 @@ Json object containing the guid and whether or not it aligned the face
 
 ### Example
 
-[https://api.checkface.ml/api/encodeimage/](https://api.checkface.ml/api/encodeimage/)
+[https://api.facemorph.me/api/encodeimage/](https://api.facemorph.me/api/encodeimage/)
 
 <script>
 (async function() {
@@ -388,7 +388,7 @@ Json object containing the guid and whether or not it aligned the face
     const hashArray = Array.from(new Uint8Array(digest));                     // convert buffer to byte array
     const hashB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(hashArray))); //encode bytes as base64
     let pageVersion = encodeURIComponent(hashB64.substr(0, 10));
-    let imgSrc = `https://api.checkface.ml/api/face/?value=${pageVersion}&dim=50`
+    let imgSrc = `https://api.facemorph.me/api/face/?value=${pageVersion}&dim=50`
     let linkHref = `/?value=${pageVersion}`
     document.getElementById("page-version-checkface-img").src = imgSrc;
     document.getElementById("page-version-checkface-link").href = linkHref;

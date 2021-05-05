@@ -13,7 +13,7 @@ description: Putting a face to an ip
     let ip = await fetch("https://api.ipify.org?format=json")
         .then(r => r.json())
         .then(j => j.ip)
-    let imgSrc = `https://api.checkface.ml/api/face/?value=${encodeURIComponent(ip)}&dim=400`
+    let imgSrc = `https://api.facemorph.me/api/face/?value=${encodeURIComponent(ip)}&dim=400`
     document.getElementById("desc").innerText = "Your IP Address is: "
     document.getElementById("ip").innerText = ip;
     document.getElementById("ipimg").src = imgSrc;        
