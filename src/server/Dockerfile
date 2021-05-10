@@ -7,11 +7,7 @@ RUN python fetchModel.py
 
 
 
-FROM tensorflow/tensorflow:1.15.0-gpu-py3
-
-RUN pip install scipy==1.3.3
-RUN pip install requests==2.22.0
-RUN pip install Pillow==6.2.1
+FROM tensorflow/tensorflow:1.15.5-gpu-py3
 
 RUN apt update
 RUN apt install --no-install-recommends -y ffmpeg
