@@ -732,7 +732,7 @@ def getEncodedImagesRecord(requestKey):
     return db.encodedimages.find_one({'_id': requestKey})
 
 def setEncodedImagesRecord(requestKey, guid, didAlign):
-    app.logger.info(f"Setting encoded image record for {{'guid': guid', 'did_align': {str(didAlign)}}}")
+    app.logger.info(f"Setting encoded image record for {{'guid': '{str(guid)}', 'did_align': {str(didAlign)}}}")
     db.encodedimages.insert_one({'_id':requestKey, 'guid': guid, 'did_align': didAlign })
 
 @app.route('/api/encodeimage/', methods=['POST'])
