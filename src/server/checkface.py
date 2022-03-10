@@ -126,7 +126,7 @@ def toImages(Gs, latents, image_size):
 
 class LatentProxy:
     '''
-    This is an Abstract Base Class for both seeds and guids 
+    This is an Abstract Base Class for both seeds and guids
     Represents something that can become a latent, be it a seed or a guid in the database
     '''
 
@@ -201,12 +201,12 @@ class LatentByLerp(LatentProxy):
         self.p = p
 
     def getName(self):
-        return f"LERP_{p:.3f}_{self.fromLat.getName()}-{self.toLat.getName()}_LERP"
+        return f"LERP_{self.p:.3f}_{self.fromLat.getName()}-{self.toLat.getName()}_LERP"
 
     def getLatent(self, Gs):
         latent1 = np.array(self.fromLat.getLatent(Gs))
         latent2 = np.array(self.toLat.getLatent(Gs))
-        
+
         if(latent1.shape[0] == 18 and latent2.shape[0] == 512):
             if not hasattr(self.toLat, 'asDLat'):
                 self.toLat.asDLat = toDLat(Gs, latent2)
@@ -216,7 +216,7 @@ class LatentByLerp(LatentProxy):
             if not hasattr(self.fromLat, 'asDLat'):
                 self.fromLat.asDLat = toDLat(Gs, latent1)
             latent1 = self.fromLat.asDLat
-        
+
         return latent1 * (1 - self.p) + latent2 * self.p
 
 class GenerateImageJob:
