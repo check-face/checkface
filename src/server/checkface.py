@@ -245,6 +245,7 @@ default_image_dim = 300
 requestTimeSummary = Summary('request_processing_seconds',
                              'Time spent processing request')
 imagesGenCounter = Counter('image_generating', 'Number of images generated')
+imageEncodedCounter = Counter('image_encoding', 'Number of images encoded')
 jobQueue = Gauge('job_queue', 'Number of jobs in the queue')
 generatorNetworkTime = Summary('generator_network_seconds', 'Time taken to run \
                                 the generator network')
@@ -761,6 +762,7 @@ def encodeimage():
     if not resp.ok:
         return flask.Response('Encoding error', status=500)
 
+    imageEncodedCounter.inc()
     respData = resp.json()
     latentArray = respData['dlatent']
     didAlign = respData['did_align']
