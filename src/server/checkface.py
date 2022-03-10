@@ -136,6 +136,9 @@ class LatentProxy:
     def getName(self):
         raise NotImplementedError()
 
+    def getShardPartitions(self):
+        raise NotImplementedError()
+
 
 class LatentBySeed(LatentProxy):
     def __init__(self, seed: int):
@@ -150,6 +153,9 @@ class LatentBySeed(LatentProxy):
 
     def getSeed(self):
         return self.seed
+
+    def getShardPartitions(self):
+        return ["s" + str(self.seed % 100), str(self.seed % 10000) ]
 
 
 class LatentByTextValue(LatentProxy):
@@ -175,6 +181,10 @@ class LatentByTextValue(LatentProxy):
     def getHashHex(self):
         return self.hashhex
 
+    def getShardPartitions(self):
+        name = self.getName()
+        return [  name[:7], name[7:9] ]
+
 class LatentByGuid(LatentProxy):
     def __init__(self, guid: uuid.UUID):
         self.guid = guid
@@ -194,6 +204,10 @@ class LatentByGuid(LatentProxy):
     def getName(self):
         return f"GUID{str(self.guid)}"
 
+    def getShardPartitions(self):
+        name = self.getName()
+        return [  name[:6], name[6:8] ]
+
 class LatentByLerp(LatentProxy):
     def __init__(self, fromLat:LatentProxy, toLat:LatentProxy, p: float):
         self.fromLat = fromLat
@@ -202,6 +216,9 @@ class LatentByLerp(LatentProxy):
 
     def getName(self):
         return f"LERP_{self.p:.3f}_{self.fromLat.getName()}-{self.toLat.getName()}_LERP"
+
+    def getShardPartitions(self):
+        return [ "LERPS" ]
 
     def getLatent(self, Gs):
         latent1 = np.array(self.fromLat.getLatent(Gs))
@@ -321,12 +338,16 @@ def getRequestedImageDim(request):
     return defaultedRequestInt(request, 'dim', default_image_dim, 10, 1024)
 
 def handle_generate_image_request(latentProxy: LatentProxy, image_dim, isWebp):
-    imgsDir = os.path.join(os.getcwd(), "checkfacedata", "outputImages")
+    partitions = os.path.join(*latentProxy.getShardPartitions())
+    imgsDir = os.path.join(os.getcwd(), "checkfacedata", "outputImages", partitions)
     os.makedirs(imgsDir, exist_ok=True)
+
     fileExt = "webp" if isWebp else "jpg"
     fileFormat = "WEBP" if isWebp else "JPEG"
     fileMimetype = "image/webp" if isWebp else "image/jpg"
     name = os.path.join(imgsDir, f"{latentProxy.getName()}_{image_dim}.{fileExt}")
+    app.logger.info(f"image file name: {name}")
+
     if not os.path.isfile(name):
         job = GenerateImageJob(latentProxy, latentProxy.getName())
         q.put(job)
@@ -410,16 +431,18 @@ outputMorphsDir = os.path.join(os.getcwd(), "checkfacedata", "outputMorphs")
 assetsDir = os.path.join(os.getcwd(), "checkfacedata", "assets")
 os.makedirs(outputMorphsDir, exist_ok=True)
 
-def getParentMorphdir(fromName, toName):
-    return os.path.join(outputMorphsDir,
-                    f"from {fromName} to {toName}")
+def getParentMorphdir(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy):
 
-def getFramesMorphdir(fromName, toName, num_frames, image_dim, isLinear):
-    parentMorphdir = getParentMorphdir(fromName, toName)
+    partitions = fromLatentProxy.getShardPartitions() + toLatentProxy.getShardPartitions()
+    partitionsPart = os.path.join(*partitions)
+    return os.path.join(outputMorphsDir, partitionsPart,
+                    f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()}")
+
+def getFramesMorphdir(parentMorphDir, num_frames, image_dim, isLinear):
     shape = "linear" if isLinear else "trig"
-    framesdir = os.path.join(parentMorphdir, "frames",
+    framesdir = os.path.join(parentMorphDir, "frames",
                     f"{shape} n{num_frames}x{image_dim}")
-    return parentMorphdir, framesdir
+    return framesdir
 
 def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, num_frames, image_dim, framenums, isLinear = False):
     """
@@ -433,7 +456,9 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
     If isLinear, linearly morphs from start to end (inclusive)
     Else, trig morphs from start to end and back (last frame is one frame away from start) (deduplicates if even num_frames)
     """
-    parentMorphdir, framesdir = getFramesMorphdir(fromLatentProxy.getName(), toLatentProxy.getName(), num_frames, image_dim, isLinear)
+    parentMorphdir = getParentMorphdir(fromLatentProxy, toLatentProxy)
+
+    framesdir = getFramesMorphdir(parentMorphdir, num_frames, image_dim, isLinear)
     os.makedirs(framesdir, exist_ok=True)
 
     if (num_frames % 2) == 0 and not isLinear:
@@ -496,7 +521,7 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
     return filenames
 
 def generate_link_preview(fromLatentProxy: LatentProxy, toLatentProxy: LatentProxy, preview_width):
-    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    parentMorphdir = getParentMorphdir(fromLatentProxy, toLatentProxy)
     previewsDir = os.path.join(parentMorphdir, "linkPreviews")
     os.makedirs(previewsDir, exist_ok=True)
 
@@ -623,7 +648,7 @@ def gif_generation():
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
 
-    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    parentMorphdir = getParentMorphdir(fromLatentProxy, toLatentProxy)
     GIFsDir = os.path.join(parentMorphdir, "GIFs")
     name = os.path.join(GIFsDir, f"n{num_frames}f{fps}x{image_dim}.gif")
 
@@ -647,7 +672,7 @@ def mp4_generation():
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
     kbitrate = defaultedRequestInt(request, 'kbitrate', 2400, 100, 20000)
 
-    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    parentMorphdir = getParentMorphdir(fromLatentProxy, toLatentProxy)
     mp4sDir = os.path.join(parentMorphdir, "mp4s")
     name = os.path.join(mp4sDir, f"n{num_frames}f{fps}x{image_dim}k{kbitrate}.mp4")
 
@@ -683,7 +708,7 @@ def webp_generation():
     num_frames = defaultedRequestInt(request, 'num_frames', 50, 3, 200)
     fps = defaultedRequestInt(request, 'fps', 16, 1, 100)
 
-    parentMorphdir = getParentMorphdir(fromLatentProxy.getName(), toLatentProxy.getName())
+    parentMorphdir = getParentMorphdir(fromLatentProxy, toLatentProxy)
     webPsDir = os.path.join(parentMorphdir, "webPs")
     name = os.path.join(webPsDir, f"n{num_frames}f{fps}x{image_dim}.webp")
 
