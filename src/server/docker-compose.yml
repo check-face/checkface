@@ -1,5 +1,15 @@
 version: '3'
 services:
+  encoderapi:
+    image: olicoad/encoder4editing:latest
+    restart: unless-stopped
+    ports:
+     - 8083:8080
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
 
   api:
     build: .
@@ -7,17 +17,28 @@ services:
       - db
     stdin_open: true
     tty: true
-    restart: always
+    restart: unless-stopped
     ports:
      - "8080:8080"
      - "8000:8000"
+    volumes:
+     - "/mnt/unit/checkfacedata:/app/checkfacedata"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    shm_size: '2gb'
 
   db:
     image: mongo:4.2
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
-    restart: always
+    restart: unless-stopped
     volumes: 
-      - ./dbdata:/data/db
-      
+      - checkfacedbdata:/data/db
+
+volumes:
+  checkfacedbdata:
+    external: true
