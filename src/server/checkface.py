@@ -236,6 +236,39 @@ class LatentByLerp(LatentProxy):
 
         return latent1 * (1 - self.p) + latent2 * self.p
 
+class LatentByMultiLerp(LatentProxy):
+    def __init__(self, multiLerps):
+        self.multiLerps = multiLerps
+        names = [latProxy.getName() for [_,latProxy] in self.multiLerps]
+        amounts = [f"{p:.3f}" for [p,_] in self.multiLerps]
+        middle = "-".join(names) + "_" + "-".join(amounts)
+        self.hashhex = hashlib.sha256(middle.encode('utf-8')).hexdigest()
+
+    def getName(self):
+        return "MULTILERP_" + self.hashhex + "_MULTILERP"
+
+    def getShardPartitions(self):
+        name = self.getName()
+        return [ name[:12], name[12:14] ]
+
+    def getLatent(self, Gs):
+        latents = [amount * np.array(latProxy.getLatent(Gs)) for [amount,latProxy] in self.multiLerps]
+
+        isAnyDlat = False
+        for l in latents:
+            if l.shape[0] == 18:
+                isAnyDlat = True
+                break
+
+        if isAnyDlat:
+            for idx, lat in enumerate(latents):
+                latProxy = self.multiLerps[idx][1]
+                if not hasattr(latProxy, 'asDLat'):
+                    latProxy.asDLat = toDLat(Gs, lat)
+            latents = [latProxy.asDLat for [_,latProxy] in self.multiLerps]
+
+        return np.sum(latents,0)
+
 class GenerateImageJob:
     def __init__(self, latentproxy, name):
         self.latentproxy = latentproxy
@@ -391,7 +424,28 @@ def useTextOrSeedOrGuid(textValue: str, seedstr: str, guidstr: str):
     # fallback on text value if nothing else
     return LatentByTextValue(textValue)
 
+def getMultiLerpLatent(numMulti, request):
+    multiLerp = []
+    for i in range(numMulti):
+        textValue = request.args.get('value' + str(i))
+        seedstr = request.args.get('seed' + str(i))
+        guidstr = request.args.get('guid' + str(i))
+        latentProxy = useTextOrSeedOrGuid(textValue, seedstr, guidstr)
+        amountstr = request.args.get('amount' + str(i))
+        if amountstr:
+            amount = max(-2.0, min(2.0, float(amountstr)))
+        else:
+            amount = 1.0 / float(numMulti)
+        multiLerp.append([amount,latentProxy])
+    return LatentByMultiLerp(multiLerp)
+    
+
+
 def getRequestLatent(request):
+    numMulti = defaultedRequestInt(request, 'num_multi', 0, 0, 16)
+    if numMulti > 0:
+        return getMultiLerpLatent(numMulti, request)
+
     textValue = request.args.get('value')
     seedstr = request.args.get('seed')
     guidstr = request.args.get('guid')
