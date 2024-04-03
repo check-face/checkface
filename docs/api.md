@@ -44,7 +44,7 @@ Use either `value`, `seed` or `guid` parameters to specify the face
 
 `seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
+`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent) or [/api/encodeimage](#post-apiencodeimage)
 
 `format` *optional* **string** if set to webp, returns a webp image. Defaults to jpg
 
@@ -67,7 +67,7 @@ Use either `value`, `seed` or `guid` parameters to specify the latent
 
 `seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
+`guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent) or [/api/encodeimage](#post-apiencodeimage)
 
 ### Returns
 
@@ -105,7 +105,7 @@ You can mix and match values, seeds and guids.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent) or [/api/encodeimage](#post-apiencodeimage)
 
 ### Returns
 
@@ -136,7 +136,7 @@ You can mix and match values, seeds and guids.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent) or [/api/encodeimage](#post-apiencodeimage)
 
 ### Returns
 
@@ -169,7 +169,7 @@ This is useful when trying out the api in a browser manually.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent) or [/api/encodeimage](#post-apiencodeimage)
 
 `embed_html` *optional* **boolean** determines whether the response is embedded in an HTML document and loops
 
