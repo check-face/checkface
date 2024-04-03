@@ -20,9 +20,10 @@ layout: default
 
 The API is available at `https://api.facemorph.me/`
 
-You're in luck that it's not authenticated; it's an entirely open API!
+You're in luck that it's not authenticated; it's an entirely open API!  
+It would be appreciated if you add a `&for=your_project_name` query parameter to requests so that we can filter the logs if things go wrong, especially if you're asking for help with the api by email or github issues.
 
-The API is in Alpha is is likely to go down, have maintenance at unpredictable times and make breaking changes to the API.
+The API is likely to go down or have maintenance at unpredictable times, sometimes for days or weeks. If you plan on using it for something critical, get in touch.
 
 
 # Endpoints
@@ -197,7 +198,7 @@ You can mix and match values, seeds and guids.
 
 `from_seed`, `to_seed` *optional* **int** corresponding to the seed used in the random number generator to generate latents
 
-`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent)
+`from_guid`, `to_guid` *optional* **guid** globally unique identifier returned by [/api/registerlatent](#post-apiregisterlatent) or [/api/encodeimage](#post-apiencodeimage)
 
 ### Returns
 
@@ -237,7 +238,7 @@ For example
 
 ### Example 
 
-<details><summary>With curl (click here to expand)</summary>
+<details><summary>With curl <b>(click here to expand)</b></summary>
 <div markdown="1">
 
 ```bash
