@@ -47,6 +47,6 @@ tensorflow-gpu==1.15.5
 termcolor==1.1.0
 typing-extensions==3.7.4.3
 urllib3==1.25.8
-Werkzeug==0.16.0
+Werkzeug==2.2.3
 wrapt==1.11.2
 zipp==3.4.0
