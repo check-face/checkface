@@ -97,6 +97,51 @@ class LegacyContract(unittest.TestCase):
             api.enqueue(api.GenerateImageJob(api.LatentBySeed(0), 'recovered'))
             self.assertEqual(limited.qsize(), 1)
 
+    def test_long_morph_keeps_only_bounded_full_images(self):
+        for count in (199, 200):
+            for linear in (False, True):
+                with self.subTest(count=count, linear=linear), tempfile.TemporaryDirectory() as directory:
+                    state = {'live': 0, 'peak': 0, 'generated': 0}
+
+                    class TrackedImage:
+                        def __init__(self, size=(1024, 1024)):
+                            self.full, self.closed = size == (1024, 1024), False
+                            if self.full:
+                                state['live'] += 1
+                                state['peak'] = max(state['peak'], state['live'])
+                        def resize(self, size, _resampling):
+                            return TrackedImage(size)
+                        def close(self):
+                            if self.full and not self.closed:
+                                state['live'] -= 1
+                            self.closed = True
+
+                    def enqueue(job):
+                        state['generated'] += 1
+                        job.set_result(TrackedImage())
+
+                    def save(_image, filename, _format):
+                        Path(filename).write_bytes(b'written')
+
+                    left, right = api.LatentBySeed(0), api.LatentBySeed(1)
+                    with patch.object(api, 'outputMorphsDir', directory), patch.object(api, 'enqueue', enqueue), \
+                         patch.object(api, 'save_image_atomic', save):
+                        paths = api.generate_morph_frames(left, right, count, 64, list(range(count)), linear)
+                        self.assertEqual(len(paths), count)
+                        self.assertTrue(all(Path(path).is_file() for path in paths))
+                        expected_jobs = count if linear or count % 2 else count // 2 + 1
+                        self.assertEqual(state['generated'], expected_jobs)
+                        self.assertLessEqual(state['peak'], 5)  # Four jobs plus transient full-size alias.
+                        self.assertEqual(state['live'], 0)
+                        if count % 2 == 0 and not linear:
+                            self.assertEqual(paths[1], paths[-1])
+                        parent = Path(api.getParentMorphdir(left, right))
+                        self.assertTrue((parent / 'FROM.jpg').exists())
+                        self.assertEqual((parent / 'TO.jpg').exists(), linear or count % 2 == 0)
+                        again = api.generate_morph_frames(left, right, count, 64, list(range(count)), linear)
+                        self.assertEqual(again, paths)
+                        self.assertEqual(state['generated'], expected_jobs, 'Cache hit generated more images')
+
     def test_invalid_latents_rejected_before_persistence(self):
         for value in ([1.0], [float('nan')]*512, [['bad']]):
             self.assertFalse(api.registerLatent(value)[0])

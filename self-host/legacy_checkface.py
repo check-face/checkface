@@ -563,36 +563,47 @@ def generate_morph_frames(fromLatentProxy: LatentProxy, toLatentProxy: LatentPro
             app.logger.info(f"All required frames already exist in {framesdir}")
         return filenames
 
+    def flush_jobs():
+        # Never retain every full-resolution result for a long morph. A batch
+        # owns at most four full images; aliases share that image until saved.
+        for job, targets in jobs:
+            img = job.wait_for_img(int(os.getenv('CHECKFACE_JOB_TIMEOUT', '600')))
+            if img is None:
+                raise RuntimeError('Generating image failed or timed out')
+            try:
+                for filename, dimension in targets:
+                    resized = img.resize((dimension, dimension), PIL.Image.Resampling.LANCZOS)
+                    try:
+                        save_image_atomic(resized, filename, 'JPEG')
+                    finally:
+                        resized.close()
+            finally:
+                job.img = None
+                img.close()
+                del img
+        jobs.clear()
+
     for i, fName in frames:
         if os.path.isfile(fName):
-            app.logger.info(f"Frame already exists: {fName}")
-        elif not (fName in deduplicateBy):
+            app.logger.info(f'Frame already exists: {fName}')
+        elif fName not in deduplicateBy:
             lerpLatentProxy = LatentByLerp(fromLatentProxy, toLatentProxy, 1 - vals[i])
-            job = GenerateImageJob(lerpLatentProxy, f"from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{i}")
+            job = GenerateImageJob(lerpLatentProxy, f'from {fromLatentProxy.getName()} to {toLatentProxy.getName()} n{num_frames}f{i}')
             enqueue(job)
-            jobs.append((job, fName, image_dim))
+            targets = [(fName, image_dim)]
             deduplicateBy.add(fName)
-
-            # also save full size FROM and TO images for posterity sake
             if i == 0:
-                FROM_IMAGE = os.path.join(parentMorphdir, "FROM.jpg")
-                if not os.path.isfile(FROM_IMAGE):
-                    jobs.append((job, FROM_IMAGE, 1024))
-
+                from_image = os.path.join(parentMorphdir, 'FROM.jpg')
+                if not os.path.isfile(from_image):
+                    targets.append((from_image, 1024))
             if (isLinear and i == num_frames - 1) or (i == num_frames / 2 and not isLinear):
-                TO_IMAGE = os.path.join(parentMorphdir, "TO.jpg")
-                if not os.path.isfile(TO_IMAGE):
-                    jobs.append((job, TO_IMAGE, 1024))
-    if len(jobs) > 0:
-        start = time.time()
-        imgs = [(job.wait_for_img(int(os.getenv('CHECKFACE_JOB_TIMEOUT', '600'))), fName, dim) for (job, fName, dim) in jobs]
-        diff = time.time() - start
-        app.logger.info(f"Waited {diff:.2f} seconds for {len(imgs)} morph frames")
-
-        for img, fName, dim in imgs:
-            if not img:
-                raise Exception("Generating image failed or timed out")
-            save_image_atomic(img.resize((dim, dim), PIL.Image.Resampling.LANCZOS), fName, 'JPEG')
+                to_image = os.path.join(parentMorphdir, 'TO.jpg')
+                if not os.path.isfile(to_image):
+                    targets.append((to_image, 1024))
+            jobs.append((job, targets))
+            if len(jobs) == 4:
+                flush_jobs()
+    flush_jobs()
 
     return filenames
 

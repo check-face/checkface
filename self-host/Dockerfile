@@ -16,16 +16,18 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu && pip install --no-cache-dir -r requirements.txt
 
-FROM runtime-deps AS runtime
+FROM runtime-deps AS api-base
 COPY *.py ./
 COPY templates ./templates
 COPY assets ./checkfacedata/assets
 COPY e4e ./e4e
 COPY fixtures ./fixtures
 COPY legacy-route-inventory.json ./
-COPY --from=frontend /src/deploy-self-host /app/frontend
 RUN mkdir -p /app/checkfacedata && chown -R 10001:10001 /app/checkfacedata
 ENV PYTHONPATH=/opt/stylegan PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 USER 10001:10001
 EXPOSE 8080
 CMD ["python", "legacy_checkface.py"]
+
+FROM api-base AS runtime
+COPY --from=frontend /src/deploy-self-host /app/frontend

@@ -117,7 +117,8 @@
     "CPU queue waits configurable600s rather than30s; single-face worker and queue32",
     "Atomic cache writes and checked ffmpeg subprocess",
     "Sixteen HTTP workers, eight generation admissions by default; health remains available",
-    "Full frontend served from configured directory; no extra morph features"
+    "Full frontend served from configured directory; no extra morph features",
+    "Morph frame results saved/released in batches of at most four; valid199/200-frame workloads have bounded image retention"
   ],
   "frontend_oembed_source": {
     "path": "facemorph.me/Server/Index.fs",
