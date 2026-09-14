@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!requirements.txt
+!api.py
+!smoke.py
+!prepare_model.py
+!fixtures/
+!fixtures/**

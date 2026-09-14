@@ -1,0 +1,32 @@
+name: Self-host CPU inference
+on:
+  push:
+    branches: ['candidate/self-host-api']
+    paths: ['self-host/**', '.github/workflows/self-host*.yml']
+  pull_request:
+    paths: ['self-host/**', '.github/workflows/self-host*.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: self-host
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CPU image locally; do not publish
+        run: docker compose build
+      - name: Fetch verified official model for research/evaluation CI
+        run: docker compose run --rm setup --accept-research-license
+      - name: Start API
+        run: docker compose up -d --wait --wait-timeout 300 api
+      - name: Real 1024px face and morph inference over HTTP
+        run: docker compose exec -T api python smoke.py
+      - name: Logs and cleanup
+        if: always()
+        run: |
+          docker compose logs --no-color api
+          docker compose down --volumes

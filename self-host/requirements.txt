@@ -1,0 +1,5 @@
+numpy==2.2.6
+Pillow==11.3.0
+scipy==1.15.3
+requests==2.32.4
+click==8.2.1

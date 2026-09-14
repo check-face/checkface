@@ -1,0 +1,28 @@
+services:
+  setup:
+    build: .
+    profiles: [setup]
+    user: "0:0"
+    volumes:
+      - models:/models
+    entrypoint: [python, prepare_model.py]
+  api:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - models:/models:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=5)"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+volumes:
+  models:
