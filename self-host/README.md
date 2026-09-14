@@ -88,8 +88,25 @@ separate, explicitly approved operations.
 The candidate CI builds its own image, acquires the real models and exercises
 actual HTTP inference. It publishes no image, model, installer or release.
 Compatibility checks cover retained routes, actual media, encoding and persistence;
-mock-only unit tests do not establish end-to-end completion. See the committed
-validation report for exact commands and results once the compatibility run finishes.
+mock-only unit tests do not establish end-to-end completion. Run the same checks locally:
+
+```sh
+docker compose exec -T api python smoke_frontend.py
+docker compose exec -T api python test_legacy_contract.py
+docker compose exec -T api python test_encoder_assets.py
+docker compose exec -T api python test_encoder.py
+docker compose exec -T api python smoke_legacy.py
+docker compose exec -T api python smoke_encoder_http.py
+docker compose restart api
+docker compose up -d --wait --wait-timeout 300 api
+docker compose exec -T api python smoke_legacy.py
+docker compose exec -T api python smoke_encoder_http.py
+```
+
+The repeated HTTP checks verify existing GUIDs, encoded-upload records and media
+survive restart. Long-morph unit checks cover both 199 and 200 frames with bounded
+live image buffers. See [candidate CI runs](https://github.com/check-face/checkface/actions/workflows/self-host-build.yml)
+for the tested commit and complete Linux build/inference logs.
 
 Python/Torch/direct dependencies and source revisions are pinned. Base-image
 digests, complete dependency hashes, distribution SBOM and broader platform
