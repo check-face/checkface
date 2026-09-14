@@ -2,7 +2,7 @@
   "repository": "https://github.com/check-face/facemorph.me.git",
   "revision": "0abb215f27b16e17e3919cf78b616b6ae4998a5d",
   "overlay_files": {
-    "global.json": "1fdeb1b73953b98c28deda19adc5fea29f21712fe925ec208457eff1c093b107",
+    "global.json": "6264f46005d456984c3e4ab3730a5f67f2baf4ac4d62543f81e9a2f792bb4ace",
     "package.json": "9d3fbc6a22c2654b1042d75c358d4a177d12835349ec99bd98e91039151043e4",
     "scripts/build-self-host.cjs": "60b0b0164c768efc387e448f18ce9e6e5914cd51dec90425a9508b415c4bf074",
     "src/BrowseFacesDialog.fs": "787ad0f28407c1abbfb7895c7dc0984bc4835fd93151d8996fc353d560c9ea02",

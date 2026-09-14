@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS node-tools
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS frontend
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:5.0.408-bullseye-slim@sha256:40c6bd0059eaa06b4a9c91cd3e6df138f6224bd02b2882bf6ce3aa4af3835fc5 AS frontend
 COPY --from=node-tools /usr/local/ /usr/local/
-ENV DOTNET_ROLL_FORWARD=Major DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 ARG FRONTEND_REV=0abb215f27b16e17e3919cf78b616b6ae4998a5d
 RUN git clone https://github.com/check-face/facemorph.me.git /src && cd /src && git checkout "$FRONTEND_REV" && rm -rf .git
 WORKDIR /src
