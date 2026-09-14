@@ -34,7 +34,8 @@ checkpoint into PyTorch in memory. TensorFlow is not installed or run. This
 conversion repeats at startup; it requires no training, account or secret.
 The API serves only after model load/conversion succeeds. CPU inference can take
 seconds per face; the smoke generates several real 1024px faces and can take
-minutes on a small CPU. Health polling is delayed while a request is rendering.
+minutes on a small CPU. Health checks remain responsive during inference; a
+second generation request receives HTTP 503 with `Retry-After: 1`.
 
 ```sh
 curl 'http://127.0.0.1:8080/healthz'
@@ -64,7 +65,10 @@ seeds and excessive frame counts. Errors use HTTP status codes. Unknown legacy
 routes return 404; they are not silently redirected to a webpage.
 
 The service publishes localhost only, runs non-root with a read-only filesystem
-and model volume, and serializes inference to bound working memory. This small
+and model volume. One inference lock bounds generation working memory; up to
+eight HTTP handlers can serve health/error responses concurrently. Excess
+connections receive HTTP 503, and idle/slow sockets time out after 15 seconds.
+This small
 HTTP server is intended for local evaluation; public hosting requires a proper
 application server, authentication, request timeouts and resource controls.
 
@@ -76,6 +80,8 @@ application server, authentication, request timeouts and resource controls.
 - Every pixel against independent converted CPU seed-0/seed-1 references after
   the established 512px resize, with maximum RGB error 1. See `fixtures/README.md`.
 - Morph endpoint equality, a distinct midpoint, and manifest contents.
+- Responsive health during real inference and immediate 503 admission for a
+  second generation request, followed by successful lock release.
 - Invalid request bounds, unsupported legacy routes, wrong-checkpoint startup
   rejection, and valid model provenance JSON when present.
 

@@ -1,5 +1,7 @@
 """Real-model HTTP smoke; never substitutes mock inference or skips missing assets."""
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
+import time
 import io
 import json
 import sys
@@ -15,8 +17,8 @@ import zipfile
 from PIL import Image
 
 base = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
-def get(path):
-    with urlopen(base + path, timeout=600) as response:
+def get(path, timeout=600):
+    with urlopen(base + path, timeout=timeout) as response:
         return response.read()
 def pixels(data):
     image = Image.open(io.BytesIO(data))
@@ -38,6 +40,27 @@ with tempfile.TemporaryDirectory() as temporary:
     assert startup.returncode != 0 and 'Untrusted or wrong model' in startup.stderr, startup.stderr
 a = pixels(get('/v1/face?seed=0'))
 assert a == pixels(get('/v1/face?seed=0')), 'Seed inference is not deterministic'
+# Real inference remains bounded while health requests run independently.
+with ThreadPoolExecutor(max_workers=1) as pool:
+    ongoing = pool.submit(get, '/v1/face?seed=0')
+    deadline = time.monotonic() + 30
+    while True:
+        busy = json.loads(get('/healthz', timeout=2))['inference_busy']
+        if busy:
+            break
+        assert not ongoing.done(), 'Inference completed before admission could be tested'
+        assert time.monotonic() < deadline, 'Inference never entered busy state'
+        time.sleep(0.01)
+    started = time.monotonic()
+    assert json.loads(get('/healthz', timeout=2))['ready']
+    try:
+        get('/v1/face?seed=1', timeout=2)
+        raise AssertionError('Concurrent inference was accepted instead of rejected')
+    except HTTPError as error:
+        assert error.code == 503 and error.headers['Retry-After'] == '1'
+    assert time.monotonic() - started < 2, 'Health/admission waited for inference'
+    assert pixels(ongoing.result(timeout=600)) == a
+assert not json.loads(get('/healthz', timeout=2))['inference_busy']
 b = pixels(get('/v1/face?seed=1'))
 assert a != b, 'Distinct seeds produced identical images'
 reference_errors = {}
@@ -66,4 +89,4 @@ try:
 except HTTPError as error:
     assert error.code == 404
 print(json.dumps({'result': 'pass', 'seed0_rgb_sha256': hashlib.sha256(a).hexdigest(), 'fixed_reference_max_errors': reference_errors,
-                  'checks': ['1024px real inference', 'repeatability', 'fixed CPU references', 'word identity', 'distinct seeds', 'morph endpoints/midpoint', 'input bounds', 'wrong model rejection', 'unsupported routes']}))
+                  'checks': ['1024px real inference', 'repeatability', 'fixed CPU references', 'word identity', 'distinct seeds', 'morph endpoints/midpoint', 'input bounds', 'wrong model rejection', 'unsupported routes', 'health during inference', 'busy admission503']}))

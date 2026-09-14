@@ -5,7 +5,8 @@ import json
 import os
 from pathlib import Path
 import pickle
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading
 from urllib.parse import parse_qs, urlsplit
 import zipfile
 from prepare_model import SOURCE_SHA256, MODEL_NAME
@@ -80,10 +81,64 @@ def render(model, z):
     return output.getvalue()
 
 
+class BoundedHTTPServer(ThreadingHTTPServer):
+    """Keep at most eight live handlers, including slow header/body clients."""
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self.slots = threading.BoundedSemaphore(8)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        request.settimeout(15)
+        if not self.slots.acquire(blocking=False):
+            try:
+                request.settimeout(1)
+                request.sendall(b'HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nRetry-After: 1\r\nConnection: close\r\n\r\n')
+            except (OSError, TimeoutError):
+                pass
+            finally:
+                self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
+
 def handler(model):
+    inference = threading.Lock()
+
     class Handler(BaseHTTPRequestHandler):
+        def handle(self):
+            try:
+                super().handle()
+            except (BrokenPipeError, ConnectionResetError, TimeoutError):
+                # A disconnected/timed-out client is not a server failure.
+                self.close_connection = True
+
         def do_GET(self):
-            import numpy as np
+            generating = urlsplit(self.path).path in ('/v1/face', '/v1/morph')
+            if generating and not inference.acquire(blocking=False):
+                self.send_response(503)
+                self.send_header('Retry-After', '1')
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            try:
+                self.serve_get()
+            finally:
+                if generating:
+                    inference.release()
+
+        def serve_get(self):
             url = urlsplit(self.path)
             query = parse_qs(url.query, keep_blank_values=True)
             if len(self.path) > 4096 or any(len(v) != 1 for v in query.values()):
@@ -91,10 +146,11 @@ def handler(model):
                 return
             try:
                 if url.path == '/healthz':
-                    body, mime = json.dumps({'ready': True, 'provider': 'cpu', 'model_source_sha256': SOURCE_SHA256, 'api_version': 1}).encode(), 'application/json'
+                    body, mime = json.dumps({'ready': True, 'provider': 'cpu', 'model_source_sha256': SOURCE_SHA256, 'api_version': 1, 'inference_busy': inference.locked()}).encode(), 'application/json'
                 elif url.path == '/v1/face':
                     body, mime = render(model, input_latent(query)), 'image/png'
                 elif url.path == '/v1/morph':
+                    import numpy as np
                     a, b = [np.random.RandomState(seed(query, k)).randn(512) for k in ('from', 'to')]
                     frames = int(query.get('frames', ['3'])[0])
                     if not 2 <= frames <= 12:
@@ -128,5 +184,5 @@ def handler(model):
 
 
 if __name__ == '__main__':
-    # One request at a time bounds CPU/memory; localhost-only publishing in Compose.
-    HTTPServer(('0.0.0.0', 8080), handler(load_model())).serve_forever()
+    # Health can proceed concurrently, while only one generation is admitted.
+    BoundedHTTPServer(('0.0.0.0', 8080), handler(load_model())).serve_forever()

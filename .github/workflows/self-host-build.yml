@@ -23,6 +23,8 @@ jobs:
         run: docker compose run --rm setup --accept-research-license
       - name: Start API
         run: docker compose up -d --wait --wait-timeout 300 api
+      - name: Bounded transport and disconnect handling
+        run: docker compose exec -T api python test_transport.py
       - name: Real 1024px face and morph inference over HTTP
         run: docker compose exec -T api python smoke.py
       - name: Logs and cleanup

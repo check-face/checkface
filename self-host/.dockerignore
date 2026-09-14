@@ -6,3 +6,4 @@
 !prepare_model.py
 !fixtures/
 !fixtures/**
+!test_transport.py
