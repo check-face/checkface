@@ -76,3 +76,8 @@ Retain the pinned source's existing notices, assets and dependency licenses.
 That frontend commit contains no top-level LICENSE file; this record does not
 invent or extend redistribution rights. No prebuilt image or compiled frontend
 release is published by this overlay.
+
+The original analytics helper now guards absent `gtag`; removing analytics must
+not interrupt Morph, uploads, sliders or sharing. The self-host homepage omits the
+public retirement banner (including its historical HF proposal), which does not
+apply to this local API. Hosted builds retain the original banner.
