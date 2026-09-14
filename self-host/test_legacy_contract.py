@@ -1,6 +1,7 @@
 """Migration contract checks: defaults, frame geometry, mixed Z/W+, paths and routes."""
 import hashlib
 import json
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -24,9 +25,18 @@ class FixedLatent(api.LatentProxy):
 
 
 class LegacyContract(unittest.TestCase):
+    def setUp(self):
+        self.log_level = api.app.logger.level
+        api.app.logger.setLevel(logging.WARNING)
+
+    def tearDown(self):
+        api.app.logger.setLevel(self.log_level)
+
     def test_deployed_routes_retained(self):
         inventory = json.loads(Path(__file__).with_name('legacy-route-inventory.json').read_text())
-        rules = {rule.rule: rule.methods for rule in api.app.url_map.iter_rules()}
+        rules = {}
+        for rule in api.app.url_map.iter_rules():
+            rules.setdefault(rule.rule, set()).update(rule.methods)
         for route in inventory['routes']:
             self.assertTrue(set(route['methods']).issubset(rules[route['path']]), route)
 

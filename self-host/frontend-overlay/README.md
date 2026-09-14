@@ -13,11 +13,21 @@ not needed by this build.
 
 ## Container source build
 
-Use the .NET 8 bookworm SDK image and Node 22 bookworm toolchain. The source-only
-overlay selects SDK 8 (`8.0.100`, latestFeature); set `DOTNET_ROLL_FORWARD=Major`
-so the pinned Fable 3.1.12 tool, originally targeting .NET 5, can run on the
-installed runtime. The main frontend repository's historical SDK selection is
-unchanged. From the overlaid frontend source directory:
+Use the official .NET 5.0.408 bullseye SDK **only in the frontend build stage**,
+with Node 22. The verified SDK manifest includes Linux amd64, arm64 and arm/v7:
+
+`mcr.microsoft.com/dotnet/sdk:5.0.408-bullseye-slim@sha256:40c6bd0059eaa06b4a9c91cd3e6df138f6224bd02b2882bf6ce3aa4af3835fc5`
+
+The overlay selects SDK `5.0.408` with latestPatch and keeps Fable 3.1.12.
+.NET 5 is an EOL build tool; it is pinned here to compile the existing application,
+not installed in the final runtime. A tested attempt with SDK 8 and major runtime
+roll-forward restored packages but the old Fable project loader failed to resolve
+its references. Upgrading that compiler/toolchain is separate from reproducing the
+existing UI. The final server remains the modern Python/PyTorch image and receives
+only static frontend output. The main frontend repository's historical SDK
+selection is unchanged.
+
+From the overlaid frontend source directory:
 
 ```sh
 npm ci

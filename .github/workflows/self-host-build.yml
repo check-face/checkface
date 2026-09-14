@@ -23,6 +23,8 @@ jobs:
         run: docker compose run --rm setup --accept-research-license
       - name: Start API
         run: docker compose up -d --wait --wait-timeout 300 api
+      - name: Original UI assets and local sharing
+        run: docker compose exec -T api python smoke_frontend.py
       - name: Deployed route and latent contract regression
         run: docker compose exec -T api python test_legacy_contract.py
       - name: Real e4e alignment and encoder regression
