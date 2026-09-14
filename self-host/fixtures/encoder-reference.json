@@ -1,0 +1,26 @@
+{
+  "source": "Previously verified e4e_cpu.py (11 September CPU adapter), unchanged source; synthetic fixture inputs only",
+  "source_sha256": "3d57d7c3500dbde5ed082864c8a81614f5550a7a29c9c77688d2cc887a9383ee",
+  "cases": [
+    {
+      "seed": 0,
+      "input_sha256": "b58b292299a10c95c78e33fd2c737237c67df65412f72675b1ca48caef35a16a",
+      "latent_sha256": "82116989dbf0ffd7d439a589f32aa43a8776a34a7d537aa5012d649dba54b4cb",
+      "shape": [
+        18,
+        512
+      ],
+      "did_align": true
+    },
+    {
+      "seed": 1,
+      "input_sha256": "0d3cff97366f99c180b2ff7a6cc56fce4753d0f2b51236c1615ef3d3bac9ce0e",
+      "latent_sha256": "772159651f7c736c8582e3360fe2a0e601ab18832cb4d97708a1af734c1f5ecb",
+      "shape": [
+        18,
+        512
+      ],
+      "did_align": true
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encode image</title>
+</head>
+<body>
+    <form action="/api/encodeimage/" method="post" enctype="multipart/form-data">
+        <h1>Encode an image</h1>
+        <label for="tryalign">Try align face</label>
+        <input type="checkbox" name="tryalign" id="tryalign" value="true">
+        <br>
+        <label for="usrimg">Select an image file</label>
+        <input type="file" name="usrimg" id="usrimg" accept="image/jpeg, image/png, image/webp">
+        <br>
+        <button type="submit">Encode</button>
+    </form>
+</body>
+</html>

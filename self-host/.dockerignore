@@ -1,9 +1,8 @@
-*
-!Dockerfile
-!requirements.txt
-!api.py
-!smoke.py
-!prepare_model.py
-!fixtures/
-!fixtures/**
-!test_transport.py
+**/__pycache__
+**/*.pyc
+*.pkl
+*.pt
+*.dat
+checkfacedata
+models
+.git

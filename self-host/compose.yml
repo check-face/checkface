@@ -5,16 +5,31 @@ services:
     user: "0:0"
     volumes:
       - models:/models
-    entrypoint: [python, prepare_model.py]
+    entrypoint: [python, setup.py]
+  db:
+    image: mongo:8.0.13
+    volumes:
+      - database:/data/db
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --eval, "quit(db.adminCommand('ping').ok ? 0 : 1)"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
   api:
     build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MONGODB_CONNECTION_STRING: mongodb://db:27017
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
       - models:/models:ro
+      - cache:/app/checkfacedata
     read_only: true
     tmpfs:
-      - /tmp:size=64m
+      - /tmp:size=256m
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
@@ -26,3 +41,5 @@ services:
       start_period: 180s
 volumes:
   models:
+  database:
+  cache:

@@ -3,3 +3,9 @@ Pillow==11.3.0
 scipy==1.15.3
 requests==2.32.4
 click==8.2.1
+Flask==3.1.2
+flask-cors==6.0.1
+pymongo==4.14.1
+prometheus-client==0.22.1
+waitress==3.0.2
+dlib==20.0.1

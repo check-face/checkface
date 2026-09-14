@@ -1,4 +1,4 @@
-name: Self-host CPU inference
+name: Self-host API compatibility
 on:
   push:
     branches: ['candidate/self-host-api']
@@ -11,7 +11,7 @@ permissions:
 jobs:
   inference:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: self-host
@@ -23,10 +23,22 @@ jobs:
         run: docker compose run --rm setup --accept-research-license
       - name: Start API
         run: docker compose up -d --wait --wait-timeout 300 api
-      - name: Bounded transport and disconnect handling
-        run: docker compose exec -T api python test_transport.py
-      - name: Real 1024px face and morph inference over HTTP
-        run: docker compose exec -T api python smoke.py
+      - name: Deployed route and latent contract regression
+        run: docker compose exec -T api python test_legacy_contract.py
+      - name: Real e4e alignment and encoder regression
+        run: |
+          docker compose exec -T api python test_encoder_assets.py
+          docker compose exec -T api python test_encoder.py
+      - name: Real legacy API routes, media and uploads
+        run: |
+          docker compose exec -T api python smoke_legacy.py
+          docker compose exec -T api python smoke_encoder_http.py
+      - name: Restart and verify persistent GUIDs, upload records and media
+        run: |
+          docker compose restart api
+          docker compose up -d --wait --wait-timeout 300 api
+          docker compose exec -T api python smoke_legacy.py
+          docker compose exec -T api python smoke_encoder_http.py
       - name: Logs and cleanup
         if: always()
         run: |

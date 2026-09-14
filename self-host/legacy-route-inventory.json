@@ -1,0 +1,130 @@
+{
+  "source": "Read-only deployed /app/checkface.py snapshot, 14 September 2026",
+  "source_sha256": "d7c70fe7d2b0a010d375e78d98b237689bbc727232173c49e294205b94b8ff4c",
+  "routes": [
+    {
+      "path": "/status/",
+      "methods": [
+        "GET"
+      ],
+      "function": "status"
+    },
+    {
+      "path": "/",
+      "methods": [
+        "GET"
+      ],
+      "function": "home"
+    },
+    {
+      "path": "/api/registerlatent/",
+      "methods": [
+        "POST"
+      ],
+      "function": "registerLatentApi"
+    },
+    {
+      "path": "/api/<string:textValue>",
+      "methods": [
+        "GET"
+      ],
+      "function": "image_generation_legacy"
+    },
+    {
+      "path": "/api/face/",
+      "methods": [
+        "GET"
+      ],
+      "function": "image_generation"
+    },
+    {
+      "path": "/api/hashdata/",
+      "methods": [
+        "GET"
+      ],
+      "function": "hashlatentdata"
+    },
+    {
+      "path": "/api/gif/",
+      "methods": [
+        "GET"
+      ],
+      "function": "gif_generation"
+    },
+    {
+      "path": "/api/mp4/",
+      "methods": [
+        "GET"
+      ],
+      "function": "mp4_generation"
+    },
+    {
+      "path": "/api/webp/",
+      "methods": [
+        "GET"
+      ],
+      "function": "webp_generation"
+    },
+    {
+      "path": "/api/linkpreview/",
+      "methods": [
+        "GET"
+      ],
+      "function": "linkpreview_generation"
+    },
+    {
+      "path": "/api/morphframe/",
+      "methods": [
+        "GET"
+      ],
+      "function": "morphframe"
+    },
+    {
+      "path": "/api/encodeimage/",
+      "methods": [
+        "POST"
+      ],
+      "function": "encodeimage"
+    },
+    {
+      "path": "/api/encodeimage/",
+      "methods": [
+        "GET"
+      ],
+      "function": "encodeimageform"
+    },
+    {
+      "path": "/api/queue/",
+      "methods": [
+        "GET"
+      ],
+      "function": "healthcheck"
+    }
+  ],
+  "preserved_defaults": {
+    "dim": 300,
+    "num_frames": 50,
+    "fps": 16,
+    "kbitrate": 2400,
+    "preview_width": 1200,
+    "morph_animation": "trig",
+    "linear_parameter": "morphframe only"
+  },
+  "portable_changes": [
+    "PyTorch adapter replaces TensorFlow runtime",
+    "Pillow Resampling.LANCZOS replaces removed ANTIALIAS name",
+    "Mongo schema retained; imported binary UUIDs additionally readable",
+    "CPU queue waits configurable600s rather than30s; single-face worker and queue32",
+    "Atomic cache writes and checked ffmpeg subprocess",
+    "Sixteen HTTP workers, eight generation admissions by default; health remains available",
+    "Full frontend served from configured directory; no extra morph features"
+  ],
+  "frontend_oembed_source": {
+    "path": "facemorph.me/Server/Index.fs",
+    "sha256": "6cea9f3bec0152b4764b84fe19356d704a3dbd306822bf6f53a56a366af2e0b9",
+    "routes": [
+      "/oembed.json",
+      "/oembed.json/"
+    ]
+  }
+}
