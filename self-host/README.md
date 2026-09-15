@@ -125,3 +125,61 @@ Review each component's terms for your intended use before accepting setup:
 Local building is not an exemption from usage restrictions. The setup flag records
 acknowledgement; it grants no rights. General public/commercial operation or
 redistribution needs its own licensing review. This candidate shares source only.
+
+## CPU allocation and retained originals (15 September follow-up)
+
+`CHECKFACE_CPU_THREADS=auto` selects at most eight PyTorch model threads, bounded
+by CPU count, process affinity and visible cgroup v1/v2 CPU quotas (including
+ancestors). Fractional quotas round down, with a minimum of one thread. Override
+with an integer 1–64; overrides are capped to detected allocation. Invalid values
+fail startup. For example, `CHECKFACE_CPU_THREADS=4 docker compose up -d api`.
+`/healthz` and startup logs report requested/effective settings. Hidden host quotas
+cannot be discovered; set a smaller override when necessary. This is a bounded
+starting policy, not a benchmarked optimum. Small/large allocation timing and
+health responsiveness under real inference still require qualification.
+
+These are model intra-op threads, also used by the encoder in this process.
+HTTP concurrency remains sixteen workers/eight generation admissions; changing
+model threads does not create extra inference jobs. FFmpeg retains its separate
+two-thread limit. CPU is the only qualified provider in this image.
+
+The legacy generator adapter now writes private lossless 1024×1024 RGB PNGs to
+`cache:/app/checkfacedata/originals-v1` **before resizing**. Every synthesis route
+uses this adapter, including queued faces and morph frames. Different sizes and
+formats reuse these raw pixels. Historic JPEG/WebP/media paths are untouched and
+continue serving existing artifacts; they never count as original PNGs. The
+separate early `/v1` prototype does not use this store.
+
+Each original embeds a canonical identity and raw-pixel SHA-256. Identity includes
+the verified loaded checkpoint hash, exact little-endian float32 resolved W+
+bytes/shape, checkpoint-constant noise, output-pipeline version, PyTorch version,
+CPU provider and effective thread count. W+ identity is **after** mapping,
+truncation and any photo preprocessing, so changed image-affecting inputs change
+the key. It does not retain uploaded photo bytes or reconstruct their preprocessing
+history. These originals can include photo-derived faces: this is private local
+storage, **not the synthetic-only public preservation archive**. Bump the output
+pipeline version whenever pixel conversion/synthesis semantics change.
+
+A process/file lock deduplicates synthesis; each PNG atomically carries pixels and
+provenance, with fsync before promotion. Interrupted staging and corrupt entries
+are retried safely. `CHECKFACE_ORIGINAL_CACHE_BYTES` defaults to 10 GiB and limits
+this namespace only; it does not limit historic derivatives/models. At capacity
+or storage failure the generated result still returns, a warning/counter records
+failed persistence, and existing originals are retained. There is no automatic
+eviction. To reclaim space, stop the local API and explicitly remove selected
+original PNGs from this namespace; later requests can regenerate them. Increasing
+the quota requires recreating the API container. Cache bookkeeping currently
+scans PNG sizes on writes; very large collections may need an indexed quota ledger.
+
+`/healthz.original_cache` reports process-local hits, generated originals and
+write failures. A restart retains pixels, but this server still initializes the
+model eagerly and recomputes mapping before a W+ lookup; avoiding that startup
+work is not claimed. Runtime/model/thread changes retain old files under separate
+keys. Original-cache identity does not rewrite the historical derivative namespace.
+
+Lightweight checks: `python test_cpu_threads.py`, `python test_original_cache.py`.
+Inside the image also run `python test_adapter_cache.py` (real torch tensors,
+fixture generator). Real-model HTTP evidence requires `smoke_original_cache.py`
+before and after an API restart with its state file retained outside `/tmp` in the
+recreated container, alongside the existing full-route/encoder smoke suite. The
+new adapter integration is source work until those real-model checks pass.
