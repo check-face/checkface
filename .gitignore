@@ -7,3 +7,8 @@ outputImages/
 cache/
 
 .sass-cache
+
+# Generated candidate output
+/self-host/qualified-artifact/
+/self-host/checkfacedata/
+/self-host/models/

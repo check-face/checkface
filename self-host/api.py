@@ -17,7 +17,8 @@ MODEL_SHA256 = 'dc315131a0d8466167f69962dd75567db8815261a5c5cab545fe9b48fe815994
 def load_model():
     import torch
     from torch_utils.ops import bias_act, upfirdn2d, conv2d_gradfix
-    torch.set_num_threads(2)
+    from cpu_threads import configure_torch
+    configure_torch(torch)
     torch.use_deterministic_algorithms(True)
     original_bias, original_up = bias_act.bias_act, upfirdn2d.upfirdn2d
     def bias(*args, **kwargs):
@@ -39,6 +40,7 @@ def load_model():
         model = pickle.loads(data)  # Existing trusted converted workspace artifact.
     else:
         raise RuntimeError('Untrusted or wrong model: expected pinned CheckFace checkpoint')
+    model._checkface_source_sha256 = actual
     return model.eval().requires_grad_(False).to('cpu')
 
 

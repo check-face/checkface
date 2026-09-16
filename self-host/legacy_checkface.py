@@ -9,6 +9,8 @@ import math
 from pathlib import Path
 from bson.binary import Binary, UuidRepresentation
 from api import load_model
+from cpu_threads import thread_status
+from original_cache import OriginalCache
 from torch_adapter import TorchGenerator
 import time
 import os
@@ -37,6 +39,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 inference_lock = threading.RLock()
 model_ready = threading.Event()
 model_adapter = None
+original_cache = OriginalCache(DATA_DIR, os.getenv('CHECKFACE_ORIGINAL_CACHE_BYTES', str(10 * 1024**3)))
 
 mongodb_conn_str = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://root:example@db")
 client = pymongo.MongoClient(mongodb_conn_str)
@@ -44,7 +47,7 @@ db = client.test
 
 
 def fetch_model():
-    return TorchGenerator(load_model())
+    return TorchGenerator(load_model(), original_cache=original_cache)
 
 num_gpus = 0  # Portable candidate uses CPU; the legacy parameter remains internal.
 synthesis_kwargs = {}
@@ -937,9 +940,10 @@ def worker():
         try:
             with inference_lock:
                 latent = job.latentproxy.getLatent(Gs)
+                generated_before = original_cache.generated
                 image = toImages(Gs, [toDLat(Gs, latent)], None)[0]
+                imagesGenCounter.inc(original_cache.generated - generated_before)
             job.set_result(image)
-            imagesGenCounter.inc()
         except Exception as error:
             app.logger.exception('Generation job failed')
             job.error = error
@@ -1042,7 +1046,7 @@ def generation_release(_error):
 
 @app.route('/healthz', methods=['GET'])
 def readiness():
-    return jsonify({'ready': model_ready.is_set(), 'provider': 'cpu', 'queue': q.qsize(), 'generation_capacity': GENERATION_CAPACITY}), (200 if model_ready.is_set() else 503)
+    return jsonify({'ready': model_ready.is_set(), 'provider': 'cpu', 'queue': q.qsize(), 'generation_capacity': GENERATION_CAPACITY, 'cpu_threads': thread_status(), 'original_cache': {'hits': original_cache.hits, 'generated': original_cache.generated, 'write_failures': original_cache.write_failures}}), (200 if model_ready.is_set() else 503)
 
 
 @app.errorhandler(queue.Full)

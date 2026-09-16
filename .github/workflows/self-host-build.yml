@@ -1,7 +1,7 @@
 name: Self-host API compatibility
 on:
   push:
-    branches: ['candidate/self-host-api']
+    branches: ['candidate/self-host-api', 'candidate/self-host-validation-20260915', 'candidate/next-delivery-20260916']
     paths: ['self-host/**', '.github/workflows/self-host*.yml']
   pull_request:
     paths: ['self-host/**', '.github/workflows/self-host*.yml']
@@ -10,7 +10,15 @@ permissions:
   contents: read
 jobs:
   inference:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     defaults:
       run:
@@ -23,6 +31,13 @@ jobs:
         run: docker compose run --rm setup --accept-research-license
       - name: Start API
         run: docker compose up -d --wait --wait-timeout 300 api
+      - name: CPU allocation, original storage and adapter regressions
+        run: |
+          docker compose exec -T api python test_cpu_threads.py
+          docker compose exec -T api python test_original_cache.py
+          docker compose exec -T api python test_adapter_cache.py
+      - name: Real concurrent synthesis shares lossless originals
+        run: docker compose exec -T api python smoke_original_cache.py --state /app/checkfacedata/original-smoke.json
       - name: Original UI assets and local sharing
         run: docker compose exec -T api python smoke_frontend.py
       - name: Deployed route and latent contract regression
@@ -39,8 +54,23 @@ jobs:
         run: |
           docker compose restart api
           docker compose up -d --wait --wait-timeout 300 api
+          docker compose exec -T api python smoke_original_cache.py --state /app/checkfacedata/original-smoke.json --after-restart
           docker compose exec -T api python smoke_legacy.py
           docker compose exec -T api python smoke_encoder_http.py
+      - name: Preserve the exact tested container bytes
+        run: |
+          mkdir -p qualified-artifact
+          image_id=$(docker compose images -q api)
+          test -n "$image_id"
+          docker image inspect "$image_id" > qualified-artifact/image-inspect.json
+          docker save "$image_id" | gzip > qualified-artifact/checkface-api-${{ matrix.arch }}.tar.gz
+          sha256sum qualified-artifact/*.tar.gz > qualified-artifact/SHA256SUMS
+          printf '%s\n' '${{ github.sha }}' > qualified-artifact/source-revision.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tested-self-host-api-${{ matrix.arch }}
+          path: self-host/qualified-artifact/
+          retention-days: 14
       - name: Logs and cleanup
         if: always()
         run: |

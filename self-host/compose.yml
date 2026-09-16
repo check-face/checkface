@@ -21,6 +21,8 @@ services:
       db:
         condition: service_healthy
     environment:
+      CHECKFACE_ORIGINAL_CACHE_BYTES: ${CHECKFACE_ORIGINAL_CACHE_BYTES:-10737418240}
+      CHECKFACE_CPU_THREADS: ${CHECKFACE_CPU_THREADS:-auto}
       MONGODB_CONNECTION_STRING: mongodb://db:27017
     ports:
       - "127.0.0.1:8080:8080"
