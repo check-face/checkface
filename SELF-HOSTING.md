@@ -90,19 +90,27 @@ encodes on CPU. CI runs both (`.github/workflows/self-host-images.yml`).
 As deployed, the worker batches up to `GENERATOR_BATCH_SIZE` queued images (default 10) into one generator call.
 On a dedicated 8 GB card (the deployed GTX 1080) that fits. If other processes share the GPU, or the card has less
 memory, lower it, e.g. `GENERATOR_BATCH_SIZE=2 docker compose up -d`. `LOW_GPU_MEM=true` instead caps TensorFlow at
-75% of GPU memory with unified-memory oversubscription, which is slower but avoids out-of-memory errors.
+75% of GPU memory with unified-memory oversubscription, which is slower but avoids out-of-memory errors. The encoder
+also takes GPU memory; `CHECKFACE_ENCODER_DEVICE=cpu` keeps it on the CPU and leaves the GPU to the generator.
 
 If a generator call runs out of memory, the worker thread stops, as in the deployment, and requests time out after
 30 s. Restart the `api` service with a smaller batch.
 
-## Measured (RTX 2080 SUPER, 8 GB, about 3 GB used by a desktop session, `GENERATOR_BATCH_SIZE=2`)
+## Measured
+
+Measured with `docker compose` on an RTX 2080 SUPER (8 GB, about 3 GB used by a desktop session), with
+`GENERATOR_BATCH_SIZE=2` and `CHECKFACE_ENCODER_DEVICE=cpu`. Every route in docs/api.md was exercised, including
+upload, encode, guid and morph.
 
 | | legacy base | ngc base | hosted API (GTX 1080, batch 10) |
 |---|---|---|---|
 | Generator, steady state | 30–35 ms per 1024 px image | 30 ms per image | about 57 ms per image |
-| Uncached `/api/face/?dim=1024` | 53–61 ms | 30–60 ms once autotuned | — |
-| Uncached 26-frame 1024 px `/api/mp4/` | 1.5–1.8 s | 1.3 s | about 2.9 s |
-| Pixel difference vs the hosted API, 4 faces at dim 1024 | 0.03–0.26% of pixels, ≤6 levels, PSNR 70–81 dB | 0.06–0.30%, ≤8 levels, PSNR 70–77 dB | — |
+| Uncached `/api/face/?dim=1024` after the first | 53–55 ms | 55 ms once autotuned (first ones 0.2–2.9 s) | — |
+| Uncached 26-frame 1024 px `/api/mp4/` | 1.35 s (first: 4.8 s) | 1.26–1.28 s (first: 6.8 s) | about 2.9 s |
+| Difference vs the hosted API's JPEGs, 4 faces at dim 1024 | 0.02–0.26% of pixels, ≤6 levels, PSNR 70.6–83 dB | 0.07–0.33% of pixels, ≤8 levels, PSNR 69.8–76 dB | — |
+
+The remaining differences are GPU/cuDNN rounding (GTX 1080 vs RTX 2080 SUPER) that occasionally flips a JPEG
+coefficient. The encoder's W+ output on GPU and CPU agrees to within 1e-5.
 
 ## What was changed to make this reproducible
 
@@ -112,8 +120,11 @@ If a generator call runs out of memory, the worker thread stops, as in the deplo
 - The encoder image `olicoad/encoder4editing:latest` is no longer on Docker Hub. `src/encoder` rebuilds it from the
   deployed [check-face/encoder4editing](https://github.com/check-face/encoder4editing) server code with the same HTTP
   contract. It loads only the e4e encoder and `latent_avg`, because the deployed server never used the StyleGAN decoder it also built.
-- Weights download from NVIDIA's current CDN, the URL linked from NVlabs/stylegan2, instead of the retired
-  CloudFront URL, and the build fails if the file isn't the pinned original.
+- On hosts where the NVIDIA Container Toolkit mounts the driver at `/usr/lib` (Arch, Fedora/RHEL), the CUDA 10.0
+  image's libcuda *stub*, which it registers in `ld.so.conf`, shadowed the real driver and `cuInit` failed. The legacy
+  stage drops that loader entry. Debian/Ubuntu hosts were not affected.
+- Weights download from NVIDIA's current CDN, the URL linked from NVlabs/stylegan2, instead of the old CloudFront
+  mirror, and the build fails if the file isn't the pinned original.
 - The new `ngc` base adds Ampere, Ada and Hopper support. Compose no longer hard-codes the deployment host's data path
   or requires a pre-created external DB volume.
 

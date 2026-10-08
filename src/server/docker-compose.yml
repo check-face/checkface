@@ -8,6 +8,8 @@ services:
       args:
         TORCH_CUDA: ${CHECKFACE_ENCODER_TORCH:-cu126}
     restart: unless-stopped
+    environment:
+      ENCODER_DEVICE: ${CHECKFACE_ENCODER_DEVICE:-auto}  # set cpu to leave all GPU memory to the generator
     ports:
      - "8083:8080"
     deploy:
