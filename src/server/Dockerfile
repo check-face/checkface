@@ -18,6 +18,10 @@ FROM tensorflow/tensorflow:1.15.5-gpu-py3 AS base-legacy
 # NVIDIA rotated its apt signing key in 2022, so the CUDA apt repos baked into this image make `apt update` fail.
 # Nothing is installed from them (only Ubuntu's ffmpeg), so drop them.
 RUN rm -f /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list
+# The image puts CUDA's libcuda *stub* on the loader path (so TensorFlow imports without a GPU). Where the NVIDIA
+# Container Toolkit mounts the host driver at /usr/lib or /usr/lib64 (Arch, Fedora, RHEL hosts) rather than
+# /usr/lib/x86_64-linux-gnu (Debian/Ubuntu hosts), the stub shadows the real driver and cuInit fails. Drop it.
+RUN rm -f /etc/ld.so.conf.d/z-cuda-stubs.conf && ldconfig
 COPY ./requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
