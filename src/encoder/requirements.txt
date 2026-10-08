@@ -1,0 +1,5 @@
+numpy==2.2.6
+Pillow==11.3.0
+scipy==1.15.3
+Flask==3.1.2
+dlib==20.0.1
