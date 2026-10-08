@@ -9,7 +9,8 @@ ARG TORCH_CUDA=cu126
 
 FROM python:3.11-slim-bookworm AS download-models
 COPY fetch_models.py /fetch_models.py
-RUN python /fetch_models.py /models
+RUN python /fetch_models.py /models e4e_ffhq_encode.pt
+RUN python /fetch_models.py /models shape_predictor_68_face_landmarks.dat
 
 FROM python:3.11-slim-bookworm AS dlib-wheel
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake && rm -rf /var/lib/apt/lists/*

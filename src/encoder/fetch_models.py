@@ -1,6 +1,6 @@
 """Download the encoder's model files from their original publishers and verify pinned sizes and sha256.
 
-fetch_models.py <directory>
+fetch_models.py <directory> [name ...]   (default: all)
   e4e_ffhq_encode.pt                     encoder4editing FFHQ encoder (link in https://github.com/omertov/encoder4editing)
   shape_predictor_68_face_landmarks.dat  dlib face landmarks (https://dlib.net/files/), used for face alignment
 Neither file is redistributed by this repository. See SELF-HOSTING.md for their terms.
@@ -9,6 +9,7 @@ import bz2
 import hashlib
 import os
 import sys
+import time
 import urllib.request
 
 ASSETS = {
@@ -26,9 +27,8 @@ ASSETS = {
 }
 
 
-def fetch(name, entry, directory):
-    target = os.path.join(directory, name)
-    temporary = target + '.download'
+
+def download(entry, temporary):
     digest, size = hashlib.sha256(), 0
     with urllib.request.urlopen(entry['url'], timeout=300) as response, open(temporary, 'wb') as out:
         source = bz2.BZ2File(response) if entry.get('bz2') else response
@@ -41,15 +41,31 @@ def fetch(name, entry, directory):
                 break
             digest.update(chunk)
             out.write(chunk)
-    if size != entry['bytes'] or digest.hexdigest() != entry['sha256']:
+    return size, digest.hexdigest()
+
+
+def fetch(name, entry, directory, attempts=4):
+    target = os.path.join(directory, name)
+    temporary = target + '.download'
+    for attempt in range(1, attempts + 1):
+        try:
+            size, digest = download(entry, temporary)
+        except (OSError, EOFError) as error:  # dropped or truncated connection
+            print('%s: attempt %d failed: %r' % (name, attempt, error), flush=True)
+            time.sleep(10 * attempt)
+            continue
+        if size == entry['bytes'] and digest == entry['sha256']:
+            os.replace(temporary, target)
+            print('Verified %s (sha256 %s)' % (target, entry['sha256']), flush=True)
+            return
+        print('%s: attempt %d does not match the pinned file (%d bytes, sha256 %s)' % (name, attempt, size, digest), flush=True)
+    if os.path.exists(temporary):
         os.remove(temporary)
-        sys.exit('%s: download does not match the pinned file (%d bytes, sha256 %s)' % (name, size, digest.hexdigest()))
-    os.replace(temporary, target)
-    print('Verified %s (sha256 %s)' % (target, entry['sha256']), flush=True)
+    sys.exit('%s: could not download the pinned file from %s' % (name, entry['url']))
 
 
 if __name__ == '__main__':
     directory = sys.argv[1]
     os.makedirs(directory, exist_ok=True)
-    for name, entry in ASSETS.items():
-        fetch(name, entry, directory)
+    for name in sys.argv[2:] or list(ASSETS):
+        fetch(name, ASSETS[name], directory)
