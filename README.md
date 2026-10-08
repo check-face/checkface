@@ -61,26 +61,20 @@ Request images at [api.facemorph.me/api/face?value=example&dim=300](https://api.
 
 Documentation for endpoints available on api is available at https://checkface.facemorph.me/api
 
-Prerequisites to run the backend server
+**To run the API yourself, follow [SELF-HOSTING.md](SELF-HOSTING.md)**. It covers prerequisites (NVIDIA driver and
+NVIDIA Container Toolkit), which TensorFlow base to use for your GPU generation (GTX 10xx/RTX 20xx up to RTX 40xx/H100),
+the verified model downloads, and licensing. In short:
 
-  - Nvidia GPU with sufficient VRAM to hold the model (recommended atleast 6 GB)
-  - Nvidia drivers (eg. `sudo apt install nvidia-driver-435`)
-  - [Nvidia Docker runtime](https://github.com/NVIDIA/nvidia-docker) (only supported on Linux, until HyperV adds GPU passthrough support)
-
-If you don't have a suitable GPU, you canrun the backend with an AWS p3 instance on ECS, or g3s.xlarge via docker-machine for testing.
-
-The backend API is intented to be used behind a reverse proxy and trusts 1 `X-Forwarded-For` [using proxy_fix middleware](https://werkzeug.palletsprojects.com/en/1.0.x/middleware/proxy_fix/))
-
-#### Build and run docker image
 ```console
 cd ./src/server
-docker build -t checkfaceapi .
-docker run -d -p 8080:8080 -p 8000:8000 --gpus all --name checkfaceapi checkfaceapi
+docker compose up -d --build                         # GTX 10xx / RTX 20xx
+CHECKFACE_TF_BASE=ngc docker compose up -d --build   # RTX 30xx / 40xx, A100, H100
 ```
 
-The api is available on port 8080 and prometheus metrics on port 8000.
+The API is available on port 8080, Prometheus metrics on port 8000 and the encoder on port 8083. Generated media is
+kept in `./checkfacedata` (`CHECKFACE_DATA_DIR`).
 
-You may want to mount `/app/checkfacedata` to save generated media.
+The backend API is intended to be used behind a reverse proxy and trusts 1 `X-Forwarded-For` [using proxy_fix middleware](https://werkzeug.palletsprojects.com/en/1.0.x/middleware/proxy_fix/))
 #### Environment variables
 
  - `LOW_GPU_MEM` defaults to `false`. Set `true` to configure tf gpu options to work with less memory.

@@ -1,0 +1,52 @@
+name: Self-host images
+# Builds every API/encoder image variant from source and runs the checks that need no GPU.
+# Images are built locally on the runner only; nothing is pushed to any registry.
+on:
+  push:
+    branches: [master, 'candidate/**']
+    paths: ['src/server/**', 'src/encoder/**', 'docs/assets/images/face.jpg', '.github/workflows/self-host-images.yml']
+  pull_request:
+    paths: ['src/server/**', 'src/encoder/**', 'docs/assets/images/face.jpg', '.github/workflows/self-host-images.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  api:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tf_base: legacy   # tensorflow/tensorflow:1.15.5-gpu-py3, CUDA 10.0 (deployed base)
+            arch: sm_61       # GTX 1080, the deployed GPU
+          - tf_base: ngc      # nvcr.io/nvidia/tensorflow:23.03-tf1-py3, CUDA 12.1
+            arch: sm_86       # RTX 30xx
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: src/server
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk for the CUDA base images
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Compose file is valid
+        run: docker compose config -q
+      - name: Build API image (TF_BASE=${{ matrix.tf_base }}); downloads and verifies NVIDIA's checkpoint
+        run: CHECKFACE_TF_BASE=${{ matrix.tf_base }} docker compose -p ci build api
+      - name: Checkpoint, custom CUDA ops (nvcc, ${{ matrix.arch }}) and API routes, without a GPU
+        run: docker run --rm ci-api python ci_smoke.py ${{ matrix.arch }}
+
+  encoder:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: src/server
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk for the CUDA wheels
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Build encoder image (default cu126 wheel); downloads and verifies e4e + dlib models
+        run: docker compose -p ci build encoderapi
+      - name: Real encode through the HTTP route on CPU (GPU fallback path)
+        run: docker run --rm -v "$GITHUB_WORKSPACE/docs/assets/images/face.jpg:/face.jpg:ro" ci-encoderapi python ci_smoke.py /face.jpg
