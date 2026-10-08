@@ -1,0 +1,17 @@
+# API dependencies for the NGC TensorFlow 1.15 base (Python 3.8). TensorFlow, numpy and CUDA come from the base
+# image. Versions match requirements.txt (the deployed image) wherever they install on Python 3.8.
+Flask==1.1.2
+Werkzeug==0.16.0
+Jinja2==2.11.3
+MarkupSafe==1.1.1
+itsdangerous==1.1.0
+Click==7.0
+Flask-Cors==3.0.9
+prometheus-client==0.7.1
+pymongo==3.10.1
+requests==2.22.0
+urllib3==1.25.8
+chardet==3.0.4
+idna==2.8
+certifi==2019.11.28
+Pillow==8.1.1
